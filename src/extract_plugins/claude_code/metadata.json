@@ -1,0 +1,7 @@
+{
+  "name": "Claude Code",
+  "display_name": "Claude Code",
+  "icon": "icon.svg",
+  "color": "bg-orange-900 text-orange-400",
+  "description": "Anthropic Claude Code chat extraction"
+}

@@ -1,0 +1,145 @@
+model_defaults:
+  # Agent-specific model fallbacks based on the session's time
+  # This will be used if the source request does not include a model
+  # seen in some legacy sessions
+  enabled: true
+
+  #example
+  # copilot:
+  #   timeline:
+  #     "2020-05-01": "gpt-3"
+  #     "2022-11-01": "gpt-3.5-turbo"
+  #     "2023-03-01": "gpt-4"
+  #   default: "auto"  
+  # cursor:
+  #   timeline:
+  #     "2024-06-01": "claude-3.5-sonnet"
+  #   default: "auto"
+
+extract:
+  # Extraction options
+  text_shrinker:
+    # Controls aggressive truncation during extraction
+    min_chars_to_shrink: 1024
+    min_consecutive_lines: 8
+    keep_ratio: 0.10
+    truncate_marker: "[...truncated...]"
+    protect_chars: 512
+  
+  copilot:
+    # Local VS Code workspaceStorage used by copilot extractor
+    # OPTIONAL: If omitted, auto-detected based on platform:
+    #   Windows: %APPDATA%/Code/User/workspaceStorage
+    #   macOS:   ~/Library/Application Support/Code/User/workspaceStorage
+    #   Linux:   ~/.config/Code/User/workspaceStorage
+    # workspace_storage: "${APPDATA}/Code/User/workspaceStorage"
+    output_dir: "./output/extract"
+  
+  cursor:
+    # Cursor-specific storage locations
+    # OPTIONAL: If omitted, auto-detected based on platform:
+    #   Windows: %APPDATA%/Cursor/User/workspaceStorage
+    #   macOS:   ~/Library/Application Support/Cursor/User/workspaceStorage
+    #   Linux:   ~/.config/Cursor/User/workspaceStorage
+    # workspace_storage: "${APPDATA}/Cursor/User/workspaceStorage"
+    # global_storage: "${APPDATA}/Cursor/User/globalStorage"
+    output_dir: "./output/extract"
+  
+  claude_code:
+    # Claude Code storage location
+    # OPTIONAL: If omitted, auto-detected as ~/.claude (all platforms)
+    # claude_dir: "${HOME}/.claude"
+    output_dir: "./output/extract"
+
+web:
+  # Web UI settings
+  run_dir: "./data/web"
+  # Port for the web server
+  port: 8000
+
+search:
+  # Search behavior and thresholds
+  # Modes: hybrid, keyword, semantic
+  default_mode: "hybrid"
+  # Reciprocal Rank Fusion constant (higher reduces rank sensitivity)
+  rrf_k: 60
+  # Fetch sizes used for ranking in hybrid mode
+  keyword_fetch_limit: 200
+  semantic_fetch_limit: 200
+  # Semantic similarity thresholds (0-1)
+  semantic_min_score: 0.3
+  semantic_strict_min_score: 0.5
+  # Local embedding model (sentence-transformers)
+  semantic_model: "sentence-transformers/all-MiniLM-L6-v2"
+  # Embedding job settings
+  embedding_batch_size: 64
+  # Hard cap for page size
+  max_page_size: 100
+  # Auto-generate embeddings during extraction (enables semantic search)
+  # Warning: can increase extraction time significantly for large workspaces
+  auto_embed_on_extraction: false
+
+token_estimation:
+  # Heuristics to estimate token consumption for budgeting
+  reasoning_buffer_multiplier: 2.0
+  tool_call_multiplier: 1.5
+  tool_base_overhead: 16
+  tool_per_tool_overhead: 8
+  tool_definition_margin: 1.1
+  message_overhead: 3
+  max_context_window: 200000
+
+loc_counting:
+  # Line-of-code counting options (during extraction)
+  use_gitignore: true
+  max_file_size_mb: 10
+  max_files_to_process: 50000
+  code_extensions: >
+    .py,.pyw,.pyx,.pxd,
+    .js,.jsx,.ts,.tsx,.mjs,.cjs,
+    .html,.htm,.css,.scss,.sass,.less,.vue,.svelte,
+    .c,.h,.cpp,.hpp,.cc,.hh,.cxx,.hxx,
+    .cs,.csx,
+    .java,.kt,.kts,
+    .go,.rs,
+    .rb,.erb,.rake,
+    .php,.phtml,
+    .swift,.m,.mm,
+    .sh,.bash,.zsh,.fish,.ps1,.psm1,.bat,.cmd,
+    .json,.yaml,.yml,.toml,.ini,.cfg,.conf,
+    .sql,
+    .r,.R,
+    .scala,.clj,.cljs,.cljc,
+    .ex,.exs,.erl,.hrl,
+    .hs,.lhs,
+    .lua,.pl,.pm,
+    .dart,
+    .f,.f90,.f95,
+    .asm,.s,
+    .v,.sv,.vhd,.vhdl,
+    .tcl,.groovy,.gradle
+  doc_extensions: >
+    .md,.markdown,
+    .rst,.rest,
+    .txt,
+    .adoc,.asciidoc,
+    .tex,.latex,
+    .org,.wiki,.rdoc,.pod,.rtf
+  ignore_patterns: >
+    .git,.svn,.hg,.bzr,
+    node_modules,vendor,bower_components,jspm_packages,.pnpm,
+    __pycache__,*.pyc,*.pyo,.eggs,*.egg-info,
+    .venv,venv,env,.env,.virtualenv,.conda,.uv,
+    dist,build,out,target,bin,obj,_build,.build,
+    .idea,.vscode,.vs,
+    *.swp,*.swo,*~,.project,.settings,
+    .DS_Store,Thumbs.db,desktop.ini,
+    coverage,.coverage,htmlcov,.pytest_cache,.tox,.nox,
+    *.log,logs,
+    tmp,temp,.tmp,.temp,.cache,
+    package-lock.json,yarn.lock,pnpm-lock.yaml,poetry.lock,Pipfile.lock,Cargo.lock,
+    .next,.nuxt,.output,.parcel-cache,.turbo,.vercel,.netlify
+  
+logging:
+  # Allowed levels: DEBUG, INFO, WARNING, ERROR
+  level: "INFO"

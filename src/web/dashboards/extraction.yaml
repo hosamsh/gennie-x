@@ -1,0 +1,170 @@
+# Extraction Dashboard Configuration
+# Displays metrics and charts from the extraction process
+
+dashboard:
+  id: extraction
+  name: Extraction Dashboard
+  description: Code extraction and AI contribution metrics
+  icon: code
+
+# Metrics row - key statistics displayed at the top
+metrics:
+  - id: sessions
+    title: Sessions
+    description: Total chat sessions extracted
+    data_source:
+      type: function
+      function: get_extraction_stats
+      field: session_count
+    format: number
+    icon: chat
+
+  - id: turns
+    title: Turns
+    description: Total conversation turns
+    data_source:
+      type: function
+      function: get_extraction_stats
+      field: turn_count
+    format: number
+    icon: message
+
+  - id: lines_added
+    title: Lines Added
+    description: Total lines of code added
+    data_source:
+      type: function
+      function: get_code_metrics
+      field: total_lines_added
+    format: number
+    color: green
+    icon: plus
+
+  - id: lines_removed
+    title: Lines Removed
+    description: Total lines of code removed
+    data_source:
+      type: function
+      function: get_code_metrics
+      field: total_lines_removed
+    format: number
+    color: red
+    icon: minus
+
+  - id: total_loc
+    title: Total LOC
+    description: Total lines of code in workspace
+    data_source:
+      type: function
+      function: get_code_metrics
+      field: total_code_loc
+    format: number
+    icon: file-code
+
+  - id: ai_contribution
+    title: AI Contribution
+    description: Percentage of code from AI
+    data_source:
+      type: function
+      function: get_code_metrics
+      field: ai_contribution_pct
+    format: percent
+    icon: robot
+
+# Charts section
+charts:
+  - id: model_usage
+    title: Model Usage (by LOC)
+    description: Lines of code contributed by each model
+    chart_type: doughnut
+    width: half
+    data_source:
+      type: function
+      function: get_model_usage
+    value_field: locs
+    label_field: model
+    colors:
+      default_palette: true
+    options:
+      show_percentages: true
+      cutout: 70
+
+  - id: ai_contribution_chart
+    title: AI Contribution
+    description: AI-generated code vs other code
+    chart_type: doughnut
+    width: half
+    data_source:
+      type: function
+      function: get_ai_contribution_breakdown
+    value_field: value
+    label_field: label
+    colors:
+      AI Generated: "#3b82f6" # Blue
+      Other Code: "#94a3b8" # Slate-400
+
+  - id: code_timeline
+    title: Code Timeline
+    description: Lines added/removed over time
+    chart_type: line
+    width: full
+    data_source:
+      type: function
+      function: get_code_timeline
+    x_field: date
+    datasets:
+      - field: added
+        label: Lines Added
+        color: "#22c55e" # Green
+        fill: true
+      - field: removed
+        label: Lines Removed
+        color: "#ef4444" # Red
+        fill: true
+
+# Lists section
+  # Languages (horizontal bar chart)
+  - id: languages
+    title: Languages
+    description: Programming languages used
+    chart_type: horizontal_bar
+    width: half
+    data_source:
+      type: function
+      function: get_languages
+    label_field: language
+    value_field: change_count
+    options:
+      max_items: 10
+
+  # Tool Usage (horizontal bar chart)
+  - id: tools
+    title: Tool Usage
+    description: AI tools invoked
+    chart_type: horizontal_bar
+    width: half
+    data_source:
+      type: function
+      function: get_tool_usage
+    label_field: tool
+    value_field: count
+    options:
+      max_items: 10
+
+  # Word Cloud - Most Used Terms
+  - id: word_cloud_terms
+    title: Most Used Words
+    description: Word frequency from cleaned conversation text (workspace-scoped)
+    chart_type: word_cloud
+    width: full
+    data_source:
+      type: function
+      function: get_word_cloud_terms
+    options:
+      max_words: 300
+      min_word_length: 4
+      top_models: 8
+      exclude_patterns:
+        - ^http
+        - ^www
+        - ^\d+$

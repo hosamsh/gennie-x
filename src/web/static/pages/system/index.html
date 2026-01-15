@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Overview - CHAT_EXPLORER</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" href="/static/img/favicon.ico">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "primary-dark": "#0f4bc4",
+                        "background-dark": "#101622",
+                        "surface-dark": "#1a2332",
+                        "terminal-green": "#0bda5e",
+                        "terminal-gray": "#92a4c9",
+                        "border-dark": "#232f48",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-dark text-white h-screen flex overflow-hidden">
+    <!-- Scanline Overlay -->
+    <div class="scanline"></div>
+    
+    <!-- Side Navigation -->
+    <aside class="nav-sidebar">
+        <div class="nav-sidebar-resizer" id="sidebar-resizer"></div>
+        <div class="nav-header">
+            <h1 class="nav-title">CHAT_EXPLORER</h1>
+            <p class="nav-version" id="nav-version">loading...</p>
+        </div>
+        
+        <nav class="nav-content">
+            <!-- Main Navigation -->
+            <a href="/" class="nav-item active">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>/overview</span>
+            </a>
+            
+            <a href="/browse" class="nav-item">
+                <span class="material-symbols-outlined">folder_open</span>
+                <span>/workspaces</span>
+            </a>
+
+            <a href="/advanced_search" class="nav-item" id="nav-search">
+                <span class="material-symbols-outlined">search</span>
+                <span>/search</span>
+            </a>
+            
+            <div class="nav-divider"></div>
+            
+            <p class="nav-section-title">System</p>
+            
+            <a href="/config" class="nav-item">
+                <span class="material-symbols-outlined">settings</span>
+                <span>/config</span>
+            </a>
+        </nav>
+        
+        <div class="nav-footer">
+            <div class="nav-user">
+                <div class="nav-user-avatar" id="user-avatar">U</div>
+                <div class="nav-user-info">
+                    <p class="nav-user-name" id="user-name">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="main-layout">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="breadcrumb">
+                <button id="mobile-menu-btn" class="header-btn md:hidden">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <span class="material-symbols-outlined">home</span>
+                <a href="/" class="breadcrumb-tilde">~</a>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current">overview</span>
+            </div>
+            
+            <div class="header-actions">
+                <a href="/advanced_search" class="header-btn" title="Advanced Search" aria-label="Advanced Search">
+                    <span class="material-symbols-outlined">search</span>
+                </a>
+                
+                <!-- notifications button removed (unused) -->
+            </div>
+        </header>
+        
+        <!-- Scrollable Dashboard Content -->
+        <div class="main-content">
+            <!-- Quick Search Box -->
+            <div id="quick-search-container" class="dashboard-card mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-terminal-gray">search</span>
+                    <input 
+                        type="text" 
+                        id="quick-search-input" 
+                        placeholder="Search across indexed conversations..." 
+                        class="flex-1 bg-background-dark border border-border-dark rounded-lg px-4 py-2 text-sm text-white placeholder-terminal-gray focus:ring-2 focus:ring-primary focus:border-primary font-mono"
+                        onkeydown="if(event.key === 'Enter' && this.value.trim()) navigateToSearch(this.value.trim())">
+                    <button 
+                        id="quick-search-btn"
+                        onclick="const input = document.getElementById('quick-search-input'); if(input.value.trim()) navigateToSearch(input.value.trim())"
+                        class="btn btn-primary">
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                        SEARCH
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="text-center py-12">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3"></div>
+                <p class="text-terminal-gray">Loading system overview...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error" class="hidden text-center py-12">
+                <div class="text-4xl mb-3">⚠️</div>
+                <p class="text-error" id="error-message">Failed to load system overview</p>
+                <button onclick="loadSystemOverview()" class="mt-3 btn btn-primary">Try Again</button>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden">
+                <div class="dashboard-card max-w-2xl mx-auto mt-8 text-center">
+                    <div class="text-6xl mb-4">📭</div>
+                    <h2 class="text-2xl font-bold text-white mb-3">No Workspaces Extracted Yet</h2>
+                    <p class="text-terminal-gray mb-6">
+                        No workspaces extracted yet. Navigate to workspaces or bulk extract all to discover and index workspaces.
+                    </p>
+                    <a href="/browse" class="btn btn-primary">
+                        <span class="material-symbols-outlined">folder_open</span>
+                        Go To Workspaces
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Dashboard Content -->
+            <div id="dashboard-content" class="hidden">
+                <!-- Page Header -->
+                <div class="page-heading">
+                    <div>
+                        <h2 class="page-title">MISSION_CONTROL</h2>
+                        <p class="page-subtitle">System metrics across all indexed workspaces.</p>
+                    </div>
+                    <button onclick="loadSystemOverview()" class="btn btn-primary">
+                        <span class="material-symbols-outlined">refresh</span>
+                        REFRESH
+                    </button>
+                </div>
+
+                <!-- Dashboard Header -->
+                <div class="border-b border-border-dark mb-6 pb-3">
+                    <h2 class="text-lg font-semibold text-primary font-mono flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">dashboard</span>
+                        OVERVIEW
+                    </h2>
+                </div>
+
+                <!-- Primary Metrics Row -->
+                <div id="metrics-row" class="metrics-grid">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- System Dashboard Content -->
+                <div id="system-tab-content">
+                    <div id="system-dashboard-content">
+                        <!-- Populated by declarative dashboard renderer -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/nav-init.js"></script>
+    <script src="/static/js/navigation.js"></script>
+    <script type="module" src="/static/js/dashboard-renderer.js?v=7"></script>
+    <script src="/static/pages/system/page.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "Cursor",
+  "display_name": "Cursor",
+  "icon": "icon.svg",
+  "color": "bg-green-900 text-green-400",
+  "description": "Cursor AI chat extraction"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Copilot",
+  "display_name": "GitHub Copilot",
+  "icon": "icon.png",
+  "color": "bg-purple-900 text-purple-400",
+  "description": "GitHub Copilot chat extraction"
+}

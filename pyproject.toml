@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gennie-x"
+# Version is defined in src/__version__.py - single source of truth
+description = "Extract and analyze Copilot/Cursor chat sessions"
+requires-python = ">=3.11"
+dependencies = [
+    "openai>=1.0.0",
+    "tiktoken>=0.5.0",
+    "duckdb>=1.0.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "aiohttp",
+    "lizard>=1.17.0",
+    "joblib>=1.3.0",
+    "scikit-learn>=1.8.0",
+    "numpy>=1.24.0",
+    "sentence-transformers>=2.6.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pytest>=7.4.0",
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "src.__version__.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short"]
+filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+# General ruff config. Lint-specific options moved to `lint` subsection
+
+[tool.ruff.lint]
+# Enable only important categories:
+# F: Pyflakes (logic bugs, undefined names)
+# E: Pycodestyle errors
+# B: Bugbear (common pitfalls)
+# PL: Pylint (refactoring suggestions)
+select = ["F", "E", "B", "PL"]
+ignore = [
+    "E501", # Line too long (style)
+    "PLR",  # Pylint Refactor (often too pedantic)
+    "PLC0415",
+    "PLW0603",
+    "B905",
+    "E741",
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportGeneralTypeIssues = true
+reportUnusedImport = true
+reportUndefinedVariable = true
+# Disable noisy "Unknown" reports that are just missing type hints, not bugs
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportMissingTypeArgument = false # Disables "Expected type arguments for generic class"
+

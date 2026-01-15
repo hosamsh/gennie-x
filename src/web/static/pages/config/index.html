@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - CHAT_EXPLORER</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" href="/static/img/favicon.ico">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "primary-dark": "#0f4bc4",
+                        "background-dark": "#101622",
+                        "surface-dark": "#1a2332",
+                        "terminal-green": "#0bda5e",
+                        "terminal-gray": "#92a4c9",
+                        "border-dark": "#232f48",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-dark text-white h-screen flex overflow-hidden">
+    <!-- Scanline Overlay -->
+    <div class="scanline"></div>
+    
+    <!-- Side Navigation -->
+    <aside class="nav-sidebar">
+        <div class="nav-sidebar-resizer" id="sidebar-resizer"></div>
+        <div class="nav-header">
+            <h1 class="nav-title">CHAT_EXPLORER</h1>
+            <p class="nav-version" id="nav-version">loading...</p>
+        </div>
+        
+        <nav class="nav-content">
+            <a href="/" class="nav-item" id="nav-overview">
+                <span class="material-symbols-outlined">dashboard</span>
+                <span>/overview</span>
+            </a>
+            
+            <a href="/browse" class="nav-item" id="nav-workspaces">
+                <span class="material-symbols-outlined">folder_open</span>
+                <span>/workspaces</span>
+            </a>
+
+            <a href="/advanced_search" class="nav-item" id="nav-search">
+                <span class="material-symbols-outlined">search</span>
+                <span>/search</span>
+            </a>
+            
+            <div class="nav-divider"></div>
+            
+            <p class="nav-section-title">System</p>
+            
+            <a href="/config" class="nav-item active" id="nav-config">
+                <span class="material-symbols-outlined">settings</span>
+                <span>/config</span>
+            </a>
+        </nav>
+        
+        <div class="nav-footer">
+            <div class="nav-user">
+                <div class="nav-user-avatar" id="user-avatar">U</div>
+                <div class="nav-user-info">
+                    <p class="nav-user-name" id="user-name">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="main-layout">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="breadcrumb">
+                <button id="mobile-menu-btn" class="header-btn md:hidden">
+                    <span class="material-symbols-outlined">menu</span>
+                </button>
+                <span class="material-symbols-outlined">settings</span>
+                <a href="/" class="breadcrumb-tilde">~</a>
+                <span class="breadcrumb-separator">/</span>
+                <a href="/config" class="breadcrumb-current breadcrumb-link">config</a>
+            </div>
+            
+            <div class="header-actions">
+                <a href="/advanced_search" class="header-btn" title="Advanced Search" aria-label="Advanced Search">
+                    <span class="material-symbols-outlined">search</span>
+                </a>
+            </div>
+        </header>
+        
+        <!-- Scrollable Content -->
+        <div class="main-content">
+            <!-- Page Header -->
+            <div class="page-heading">
+                <div>
+                    <h2 class="page-title">CONFIGURATION_EDITOR</h2>
+                    <p class="page-subtitle">Manage your application configuration in YAML format</p>
+                </div>
+            </div>
+
+            <!-- Status Messages -->
+            <div id="status-message" class="hidden mb-6 p-4 rounded-lg"></div>
+
+            <!-- Action Bar -->
+            <div class="dashboard-card mb-6">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <button id="save-btn" class="px-4 py-2 bg-primary hover:bg-primary-dark rounded-lg font-medium transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">save</span>
+                            Save All Changes
+                        </button>
+                        <button id="reload-btn" class="px-4 py-2 bg-surface-dark hover:bg-border-dark border border-border-dark rounded-lg font-medium transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            Reload
+                        </button>
+                        <button id="validate-btn" class="px-4 py-2 bg-surface-dark hover:bg-border-dark border border-border-dark rounded-lg font-medium transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">check_circle</span>
+                            Validate Current
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="auto-backup" checked class="rounded bg-surface-dark border-border-dark">
+                            <span class="text-sm">Create backup on save</span>
+                        </label>
+                        <button id="backups-btn" class="px-4 py-2 bg-surface-dark hover:bg-border-dark border border-border-dark rounded-lg font-medium transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">history</span>
+                            Backups
+                        </button>
+                        <button id="view-full-btn" class="px-4 py-2 bg-surface-dark hover:bg-border-dark border border-border-dark rounded-lg font-medium transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">article</span>
+                            View Full
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Config Info -->
+                <div id="config-info" class="mt-4 pt-4 border-t border-border-dark text-sm text-terminal-gray">
+                    <div class="flex gap-6 flex-wrap">
+                        <div><span class="text-white">Path:</span> <span id="info-path">-</span></div>
+                        <div><span class="text-white">Size:</span> <span id="info-size">-</span></div>
+                        <div><span class="text-white">Modified:</span> <span id="info-modified">-</span></div>
+                        <div><span class="text-white">Backups:</span> <span id="info-backups">-</span></div>
+                        <div><span class="text-white">Sections:</span> <span id="info-sections">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Tabs -->
+            <div class="mb-6 dashboard-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-terminal-gray uppercase tracking-wider">Configuration Sections</h3>
+                    <div class="flex items-center gap-2">
+                        <span id="section-status" class="text-xs text-terminal-gray">Select a section to edit</span>
+                        <div id="section-validation-indicator" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                    </div>
+                </div>
+                <div id="section-tabs" class="flex gap-2 flex-wrap">
+                    <div class="text-sm text-terminal-gray">Loading sections...</div>
+                </div>
+            </div>
+
+            <!-- Editor -->
+            <div class="dashboard-card overflow-hidden">
+                <div class="flex items-center justify-between p-3 border-b border-border-dark bg-background-dark">
+                    <div class="flex items-center gap-2 text-sm text-terminal-gray">
+                        <span class="material-symbols-outlined text-base">code</span>
+                        <span id="editor-section-name">Select a section</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="editor-status" class="text-xs text-terminal-gray">Ready</span>
+                    </div>
+                </div>
+                <textarea 
+                    id="yaml-editor" 
+                    class="w-full h-[500px] p-4 bg-background-dark text-white font-mono text-sm resize-none focus:outline-none"
+                    spellcheck="false"
+                    placeholder="Select a configuration section to edit..."
+                    disabled
+                ></textarea>
+            </div>
+
+            <!-- Keyboard Shortcuts -->
+            <div class="mt-6 dashboard-card">
+                <p class="text-sm font-medium mb-2">&nbsp;</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-terminal-gray">
+                    <div><kbd class="px-2 py-1 bg-background-dark rounded">Ctrl+S</kbd> Save</div>
+                    <div><kbd class="px-2 py-1 bg-background-dark rounded">Ctrl+R</kbd> Reload</div>
+                    <div><kbd class="px-2 py-1 bg-background-dark rounded">Ctrl+K</kbd> Validate</div>
+                    <div><kbd class="px-2 py-1 bg-background-dark rounded">Tab</kbd> Indent</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Backups Modal -->
+    <div id="backups-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-surface-dark border border-border-dark rounded-lg max-w-3xl w-full max-h-[80vh] flex flex-col">
+            <div class="flex items-center justify-between p-4 border-b border-border-dark">
+                <h2 class="text-xl font-bold">Configuration Backups</h2>
+                <button id="close-backups" class="text-terminal-gray hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto p-4">
+                <div id="backups-list" class="space-y-2">
+                    <p class="text-terminal-gray text-center py-8">Loading backups...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let configSections = {};
+        let currentSection = null;
+        let isDirty = {};
+        let isValidating = false;
+        let fullConfigYaml = '';
+
+        // Elements
+        const editor = document.getElementById('yaml-editor');
+        const saveBtn = document.getElementById('save-btn');
+        const reloadBtn = document.getElementById('reload-btn');
+        const validateBtn = document.getElementById('validate-btn');
+        const backupsBtn = document.getElementById('backups-btn');
+        const viewFullBtn = document.getElementById('view-full-btn');
+        const autoBackupCheckbox = document.getElementById('auto-backup');
+        const statusMessage = document.getElementById('status-message');
+        const sectionValidationIndicator = document.getElementById('section-validation-indicator');
+        const sectionStatus = document.getElementById('section-status');
+        const editorStatus = document.getElementById('editor-status');
+        const editorSectionName = document.getElementById('editor-section-name');
+        const sectionTabs = document.getElementById('section-tabs');
+        const backupsModal = document.getElementById('backups-modal');
+        const closeBackupsBtn = document.getElementById('close-backups');
+        const backupsList = document.getElementById('backups-list');
+
+        // Initialize
+        loadConfig();
+        loadConfigInfo();
+
+        // Event Listeners
+        editor.addEventListener('input', () => {
+            if (currentSection) {
+                isDirty[currentSection] = true;
+                configSections[currentSection] = editor.value;
+                updateEditorStatus();
+                debounceValidate();
+            }
+        });
+
+        editor.addEventListener('keydown', (e) => {
+            // Tab key for indentation
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '  ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 2;
+            }
+            // Ctrl+S for save
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                saveConfig();
+            }
+            // Ctrl+R for reload
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                loadConfig();
+            }
+            // Ctrl+K for validate
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                validateConfig();
+            }
+        });
+
+        saveBtn.addEventListener('click', saveConfig);
+        reloadBtn.addEventListener('click', loadConfig);
+        validateBtn.addEventListener('click', () => validateSection(currentSection));
+        backupsBtn.addEventListener('click', showBackups);
+        viewFullBtn.addEventListener('click', showFullConfig);
+        closeBackupsBtn.addEventListener('click', () => backupsModal.classList.add('hidden'));
+
+        // API Functions
+        async function loadConfig() {
+            try {
+                showStatus('Loading configuration...', 'info');
+                const response = await fetch('/api/config/raw');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error('Failed to load configuration');
+                }
+                
+                fullConfigYaml = data.yaml;
+                parseSections(data.yaml);
+                isDirty = {};
+                updateEditorStatus();
+                showStatus('Configuration loaded successfully', 'success');
+                loadConfigInfo();
+            } catch (error) {
+                showStatus(`Error loading configuration: ${error.message}`, 'error');
+                console.error('Load error:', error);
+            }
+        }
+
+        function parseSections(yamlText) {
+            const sections = {};
+            const lines = yamlText.split('\n');
+            let currentSectionName = null;
+            let currentSectionLines = [];
+            let inSection = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                // Check if this is a top-level key (no leading spaces and has a colon)
+                if (line.match(/^[a-zA-Z_][a-zA-Z0-9_]*:/) && !line.startsWith(' ') && !line.startsWith('\t')) {
+                    // Save previous section if exists
+                    if (currentSectionName) {
+                        sections[currentSectionName] = currentSectionLines.join('\n');
+                    }
+                    
+                    // Start new section
+                    currentSectionName = line.split(':')[0].trim();
+                    currentSectionLines = [line];
+                    inSection = true;
+                } else if (inSection) {
+                    // Add line to current section
+                    currentSectionLines.push(line);
+                }
+            }
+            
+            // Save last section
+            if (currentSectionName) {
+                sections[currentSectionName] = currentSectionLines.join('\n');
+            }
+            
+            configSections = sections;
+            renderSectionTabs();
+            
+            // Select first section by default
+            const firstSection = Object.keys(sections)[0];
+            if (firstSection) {
+                selectSection(firstSection);
+            }
+        }
+
+        function renderSectionTabs() {
+            const sectionNames = Object.keys(configSections);
+            
+            if (sectionNames.length === 0) {
+                sectionTabs.innerHTML = '<div class="text-sm text-terminal-gray">No sections found</div>';
+                return;
+            }
+            
+            sectionTabs.innerHTML = sectionNames.map(name => {
+                const dirtyIndicator = isDirty[name] ? '<span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>' : '';
+                return `
+                    <button 
+                        onclick="selectSection('${name}')" 
+                        class="section-tab px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2"
+                        data-section="${name}"
+                    >
+                        <span>${name}</span>
+                        ${dirtyIndicator}
+                    </button>
+                `;
+            }).join('');
+            
+            updateSectionTabStyles();
+            document.getElementById('info-sections').textContent = sectionNames.length;
+        }
+
+        function selectSection(sectionName) {
+            if (!configSections[sectionName]) return;
+            
+            currentSection = sectionName;
+            editor.value = configSections[sectionName];
+            editor.disabled = false;
+            editorSectionName.textContent = sectionName;
+            
+            updateSectionTabStyles();
+            updateEditorStatus();
+            validateSection(sectionName);
+        }
+
+        function updateSectionTabStyles() {
+            document.querySelectorAll('.section-tab').forEach(tab => {
+                const sectionName = tab.dataset.section;
+                if (sectionName === currentSection) {
+                    tab.className = 'section-tab px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 bg-primary text-white';
+                } else if (isDirty[sectionName]) {
+                    tab.className = 'section-tab px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 bg-yellow-500/20 border border-yellow-500 text-yellow-500 hover:bg-yellow-500/30';
+                } else {
+                    tab.className = 'section-tab px-4 py-2 rounded-lg font-medium text-sm transition-all flex items-center gap-2 bg-surface-dark hover:bg-border-dark border border-border-dark text-terminal-gray';
+                }
+            });
+        }
+
+        async function saveConfig() {
+            try {
+                showStatus('Saving all changes...', 'info');
+                saveBtn.disabled = true;
+                
+                // Reconstruct full YAML from sections
+                const fullYaml = Object.keys(configSections)
+                    .map(name => configSections[name])
+                    .join('\n\n');
+                
+                const response = await fetch('/api/config/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        yaml_content: fullYaml,
+                        create_backup: autoBackupCheckbox.checked
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to save configuration');
+                }
+                
+                fullConfigYaml = fullYaml;
+                isDirty = {};
+                renderSectionTabs();
+                updateEditorStatus();
+                showStatus('All changes saved successfully', 'success');
+                loadConfigInfo();
+            } catch (error) {
+                showStatus(`Error saving configuration: ${error.message}`, 'error');
+                console.error('Save error:', error);
+            } finally {
+                saveBtn.disabled = false;
+            }
+        }
+
+        let validateTimeout;
+        function debounceValidate() {
+            clearTimeout(validateTimeout);
+            validateTimeout = setTimeout(() => validateSection(currentSection), 500);
+        }
+
+        async function validateSection(sectionName) {
+            if (!sectionName || isValidating) return;
+            isValidating = true;
+            
+            try {
+                const sectionContent = configSections[sectionName];
+                const response = await fetch('/api/config/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ yaml_content: sectionContent })
+                });
+                
+                const data = await response.json();
+                
+                if (data.valid) {
+                    sectionValidationIndicator.className = 'w-2 h-2 rounded-full bg-terminal-green';
+                    editorStatus.textContent = 'Valid YAML';
+                    sectionStatus.textContent = `Section '${sectionName}' is valid`;
+                } else {
+                    sectionValidationIndicator.className = 'w-2 h-2 rounded-full bg-red-500';
+                    editorStatus.textContent = `Invalid YAML`;
+                    sectionStatus.textContent = `Error: ${data.error}`;
+                }
+            } catch (error) {
+                sectionValidationIndicator.className = 'w-2 h-2 rounded-full bg-yellow-500';
+                editorStatus.textContent = 'Validation error';
+                sectionStatus.textContent = 'Validation failed';
+                console.error('Validation error:', error);
+            } finally {
+                isValidating = false;
+            }
+        }
+
+        function showFullConfig() {
+            const fullYaml = Object.keys(configSections)
+                .map(name => configSections[name])
+                .join('\n\n');
+            
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-surface-dark border border-border-dark rounded-lg max-w-6xl w-full h-[90vh] flex flex-col">
+                    <div class="flex items-center justify-between p-4 border-b border-border-dark flex-shrink-0">
+                        <h2 class="text-xl font-bold">Full Configuration (Read-Only)</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-terminal-gray hover:text-white transition-colors">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-auto min-h-0">
+                        <textarea 
+                            readonly 
+                            class="w-full h-full p-4 bg-background-dark text-white font-mono text-sm resize-none focus:outline-none"
+                        >${fullYaml}</textarea>
+                    </div>
+                    <div class="p-4 border-t border-border-dark flex justify-between items-center flex-shrink-0">
+                        <p class="text-sm text-terminal-gray">This is a read-only view of all sections combined</p>
+                        <button onclick="navigator.clipboard.writeText(this.parentElement.parentElement.querySelector('textarea').value); this.textContent = 'Copied!'; setTimeout(() => this.innerHTML = '<span class=\\'material-symbols-outlined text-sm\\'>content_copy</span> Copy All', 2000)" 
+                                class="px-3 py-1.5 bg-primary hover:bg-primary-dark rounded text-sm transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">content_copy</span>
+                            Copy All
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function loadConfigInfo() {
+            try {
+                const response = await fetch('/api/config/info');
+                const data = await response.json();
+                
+                if (data.success && data.info.exists) {
+                    const info = data.info;
+                    document.getElementById('info-path').textContent = info.path;
+                    document.getElementById('info-size').textContent = formatBytes(info.size);
+                    document.getElementById('info-modified').textContent = new Date(info.modified).toLocaleString();
+                    document.getElementById('info-backups').textContent = info.backup_count;
+                }
+            } catch (error) {
+                console.error('Error loading config info:', error);
+            }
+        }
+
+        async function showBackups() {
+            backupsModal.classList.remove('hidden');
+            backupsList.innerHTML = '<p class="text-terminal-gray text-center py-8">Loading backups...</p>';
+            
+            try {
+                const response = await fetch('/api/config/backups');
+                const data = await response.json();
+                
+                if (!data.success || data.backups.length === 0) {
+                    backupsList.innerHTML = '<p class="text-terminal-gray text-center py-8">No backups available</p>';
+                    return;
+                }
+                
+                backupsList.innerHTML = data.backups.map(backup => `
+                    <div class="bg-background-dark border border-border-dark rounded-lg p-4 flex items-center justify-between hover:border-primary transition-colors">
+                        <div>
+                            <p class="font-medium font-mono text-sm">${backup.filename}</p>
+                            <p class="text-xs text-terminal-gray mt-1">
+                                ${new Date(backup.created).toLocaleString()} • ${formatBytes(backup.size)}
+                            </p>
+                        </div>
+                        <button onclick="restoreBackup('${backup.filename}')" 
+                                class="px-3 py-1.5 bg-primary hover:bg-primary-dark rounded text-sm transition-colors">
+                            Restore
+                        </button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                backupsList.innerHTML = '<p class="text-red-500 text-center py-8">Error loading backups</p>';
+                console.error('Error loading backups:', error);
+            }
+        }
+
+        async function restoreBackup(filename) {
+            if (!confirm(`Are you sure you want to restore from ${filename}? Current configuration will be backed up.`)) {
+                return;
+            }
+            
+            try {
+                showStatus('Restoring backup...', 'info');
+                const response = await fetch('/api/config/restore', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ backup_filename: filename })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to restore backup');
+                }
+                
+                backupsModal.classList.add('hidden');
+                await loadConfig();
+                showStatus('Backup restored successfully', 'success');
+            } catch (error) {
+                showStatus(`Error restoring backup: ${error.message}`, 'error');
+                console.error('Restore error:', error);
+            }
+        }
+
+        // Utility Functions
+        function updateEditorStatus() {
+            const hasAnyDirty = Object.values(isDirty).some(d => d);
+            if (hasAnyDirty) {
+                saveBtn.classList.add('ring-2', 'ring-yellow-500');
+            } else {
+                saveBtn.classList.remove('ring-2', 'ring-yellow-500');
+            }
+            
+            if (currentSection && isDirty[currentSection]) {
+                editorStatus.textContent = 'Modified';
+            }
+        }
+
+        function showStatus(message, type) {
+            const colors = {
+                success: 'bg-green-500/20 border-green-500 text-green-500',
+                error: 'bg-red-500/20 border-red-500 text-red-500',
+                info: 'bg-blue-500/20 border-blue-500 text-blue-500'
+            };
+            
+            statusMessage.className = `mb-4 p-4 rounded-lg border ${colors[type]}`;
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusMessage.classList.add('hidden');
+            }, type === 'error' ? 5000 : 3000);
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        // Make selectSection available globally
+        window.selectSection = selectSection;
+
+        // Warn on unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            const hasAnyDirty = Object.values(isDirty).some(d => d);
+            if (hasAnyDirty) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+            }
+        });
+    </script>
+    <script src="/static/js/nav-init.js"></script>
+</body>
+</html>
