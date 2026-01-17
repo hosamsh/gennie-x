@@ -4,13 +4,11 @@ Session Endpoints - API endpoints for session and turn browsing.
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import APIRouter, HTTPException
 
 from src.web.shared_state import (
     get_all_workspace_metadata,
-    get_sessions_for_workspace,
+    get_sessions_for_workspace_by_folder,
     get_turns_for_session,
 )
 from src.web.utils.perf_timer import PerfTimer
@@ -19,7 +17,12 @@ router = APIRouter(tags=["sessions"])
 
 @router.get("/api/browse/workspace/{workspace_id}/sessions")
 async def get_workspace_sessions(workspace_id: str):
-    """Get all sessions for a workspace across all agents."""
+    """Get all sessions for a workspace across all agents.
+    
+    Sessions are consolidated by workspace_folder, so workspaces that share
+    the same folder (e.g., copilot + claude_code on the same project) will
+    have their sessions combined in this view.
+    """
     perf = PerfTimer(f"GET /api/browse/workspace/{workspace_id[:8]}/sessions")
     
     # Get unified workspace metadata
@@ -31,13 +34,16 @@ async def get_workspace_sessions(workspace_id: str):
         raise HTTPException(status_code=404, detail="Workspace not found")
     
     agents = metadata.agents
-    all_sessions: list[dict[str, Any]] = []
-    for agent in agents:
-        sessions = get_sessions_for_workspace(workspace_id, agent)
-        perf.checkpoint(f"get_sessions_for_workspace({agent})")
-        for s in sessions:
-            s["agent"] = agent
-        all_sessions.extend(sessions)
+    # Use folder-based query for cross-agent consolidation
+    # Pass 'all' to get sessions from all agents sharing the same folder
+    all_sessions = get_sessions_for_workspace_by_folder(workspace_id, 'all')
+    perf.checkpoint("get_sessions_for_workspace_by_folder")
+    
+    # Add agent info to each session if not already present
+    for s in all_sessions:
+        if "agent" not in s and "agents" in s:
+            # Use first agent if multiple
+            s["agent"] = s["agents"][0] if s["agents"] else "unknown"
 
     all_sessions.sort(key=lambda s: s.get("first_timestamp") or "")
     perf.done()

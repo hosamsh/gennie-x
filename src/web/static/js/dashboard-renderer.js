@@ -5,6 +5,8 @@
  * Supports metrics, charts, and lists with configurable data sources.
  */
 
+console.log('[DashboardRenderer] Module starting to load...');
+
 // Import chart rendering modules
 import { 
     escapeHtml, 
@@ -28,7 +30,7 @@ import {
     initializeWordClouds 
 } from '../charts/wordcloud-renderer.js';
 
-import { renderDataTable, toggleTableSort, resetTableSortState } from '../charts/table-renderer.js';
+import { renderDataTable, toggleTableSort } from '../charts/table-renderer.js';
 import { renderQuotesCarousel } from '../charts/carousel-renderer.js';
 
 // ==================== Dashboard State ====================
@@ -269,6 +271,8 @@ function setupTableSortHandlers(container, containerId, workspaceIdOrNull, dashb
 
 // ==================== Public API ====================
 
+console.log('[DashboardRenderer] About to register window.DashboardRenderer...');
+
 // Export functions for use in workspace.js
 window.DashboardRenderer = {    
     //loadDashboardData,
@@ -278,6 +282,8 @@ window.DashboardRenderer = {
         dashboardData = {};
     }
 };
+
+console.log('[DashboardRenderer] window.DashboardRenderer registered:', !!window.DashboardRenderer);
 
 // Dispatch ready event for other scripts to know when DashboardRenderer is available
 window.dispatchEvent(new CustomEvent('DashboardRendererReady'));

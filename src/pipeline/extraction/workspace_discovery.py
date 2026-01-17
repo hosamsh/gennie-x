@@ -17,6 +17,15 @@ logger = get_logger(__name__)
 # Cache for workspace folders to avoid repeated scanning
 _workspace_folders_cache: Optional[Set[str]] = None
 
+# Cache for find_workspace results to avoid repeated agent scans during extraction
+_find_workspace_cache: Dict[str, Optional[WorkspaceInfo]] = {}
+
+
+def clear_find_workspace_cache() -> None:
+    """Clear the find_workspace cache. Call when workspace state may have changed."""
+    global _find_workspace_cache
+    _find_workspace_cache = {}
+
 
 def get_all_workspace_folders() -> Set[str]:
     """Get a set of all known workspace folder paths (normalized).
@@ -106,46 +115,51 @@ def find_workspace(workspace_id: str) -> Optional[WorkspaceInfo]:
     
     Returns a WorkspaceInfo with an additional _agent_workspace_ids dict that maps
     agent_name -> original_workspace_id for use during extraction.
+    
+    Results are cached to avoid repeated agent scans during extraction pipelines.
     """
+    # Check cache first
+    if workspace_id in _find_workspace_cache:
+        return _find_workspace_cache[workspace_id]
+    
     matches: Dict[str, WorkspaceInfo] = {}
     agent_workspace_ids: Dict[str, str] = {}  # agent -> their workspace_id
     target_folder: Optional[str] = None
     
+    # Single scan: collect all workspaces from all agents once
+    all_agent_workspaces: Dict[str, List[WorkspaceInfo]] = {}
     for agent_name in list_registered_agents():
         ExtractorClass = get_extractor_class(agent_name)
         try:
             extractor = ExtractorClass.create("__scan__")
-            workspaces = extractor.scan_workspaces()
-            for ws in workspaces:
-                # Exact ID match
-                if ws.workspace_id == workspace_id:
-                    matches[agent_name] = ws
-                    agent_workspace_ids[agent_name] = ws.workspace_id
-                    if ws.workspace_folder:
-                        target_folder = ws.workspace_folder
+            all_agent_workspaces[agent_name] = extractor.scan_workspaces()
         except Exception:
-            continue
+            all_agent_workspaces[agent_name] = []
     
-    # If we found exact matches, check for other agents with same folder
+    # First pass: find exact ID matches
+    for agent_name, workspaces in all_agent_workspaces.items():
+        for ws in workspaces:
+            if ws.workspace_id == workspace_id:
+                matches[agent_name] = ws
+                agent_workspace_ids[agent_name] = ws.workspace_id
+                if ws.workspace_folder:
+                    target_folder = ws.workspace_folder
+    
+    # Second pass: find other agents with same folder (using cached results)
     if matches and target_folder:
         normalized_target = Path(target_folder).as_posix().lower()
-        for agent_name in list_registered_agents():
+        for agent_name, workspaces in all_agent_workspaces.items():
             if agent_name in matches:
                 continue
-            ExtractorClass = get_extractor_class(agent_name)
-            try:
-                extractor = ExtractorClass.create("__scan__")
-                workspaces = extractor.scan_workspaces()
-                for ws in workspaces:
-                    if ws.workspace_folder:
-                        if Path(ws.workspace_folder).as_posix().lower() == normalized_target:
-                            matches[agent_name] = ws
-                            agent_workspace_ids[agent_name] = ws.workspace_id
-                            break
-            except Exception:
-                continue
+            for ws in workspaces:
+                if ws.workspace_folder:
+                    if Path(ws.workspace_folder).as_posix().lower() == normalized_target:
+                        matches[agent_name] = ws
+                        agent_workspace_ids[agent_name] = ws.workspace_id
+                        break
     
     if not matches:
+        _find_workspace_cache[workspace_id] = None
         return None
     
     # Build consolidated result
@@ -161,6 +175,9 @@ def find_workspace(workspace_id: str) -> Optional[WorkspaceInfo]:
     )
     # Store the agent-specific IDs for extraction
     result._agent_workspace_ids = agent_workspace_ids  # type: ignore
+    
+    # Cache the result
+    _find_workspace_cache[workspace_id] = result
     return result
 
 

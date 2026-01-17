@@ -695,6 +695,92 @@ def query_workspace_sessions(
     return sessions
 
 
+def query_workspace_sessions_by_folder(
+    conn: sqlite3.Connection,
+    workspace_folder: str,
+    agent: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Get all sessions for a workspace by folder path.
+    
+    This enables cross-agent consolidation by querying using workspace_folder
+    instead of workspace_id. When multiple agents (copilot, claude_code, cursor)
+    work on the same folder, they may have different workspace_ids but the same
+    workspace_folder.
+    
+    Args:
+        conn: SQLite connection
+        workspace_folder: The workspace folder path (will be normalized)
+        agent: Optional agent type to filter by (if None or 'all', returns all agents)
+        
+    Returns:
+        List of session dicts
+    """
+    from pathlib import Path
+    
+    # Normalize folder for comparison
+    normalized_folder = Path(workspace_folder).as_posix().lower() if workspace_folder else ""
+    
+    # Build agent filter - if agent is empty or 'all', don't filter
+    if agent and agent.lower() not in ('all', 'unknown', ''):
+        agent_filter = f"%{agent.lower()}%"
+        cursor = conn.execute(
+            """SELECT session_id, session_name,
+                      COUNT(*) as turn_count,
+                      MIN(timestamp_iso) as first_timestamp,
+                      MAX(timestamp_iso) as last_timestamp,
+                      SUM(COALESCE(total_lines_added, 0)) as total_lines_added,
+                      SUM(COALESCE(total_lines_removed, 0)) as total_lines_removed,
+                      GROUP_CONCAT(DISTINCT primary_language) as languages,
+                      GROUP_CONCAT(DISTINCT agent_used) as agents
+               FROM turns 
+               WHERE LOWER(REPLACE(workspace_folder, '\\', '/')) = ? AND LOWER(agent_used) LIKE ?
+               GROUP BY session_id
+               ORDER BY first_timestamp DESC""",
+            (normalized_folder, agent_filter)
+        )
+    else:
+        cursor = conn.execute(
+            """SELECT session_id, session_name,
+                      COUNT(*) as turn_count,
+                      MIN(timestamp_iso) as first_timestamp,
+                      MAX(timestamp_iso) as last_timestamp,
+                      SUM(COALESCE(total_lines_added, 0)) as total_lines_added,
+                      SUM(COALESCE(total_lines_removed, 0)) as total_lines_removed,
+                      GROUP_CONCAT(DISTINCT primary_language) as languages,
+                      GROUP_CONCAT(DISTINCT agent_used) as agents
+               FROM turns 
+               WHERE LOWER(REPLACE(workspace_folder, '\\', '/')) = ?
+               GROUP BY session_id
+               ORDER BY first_timestamp DESC""",
+            (normalized_folder,)
+        )
+    
+    sessions = []
+    for row in cursor:
+        # Parse languages from comma-separated string
+        lang_str = row[7] or ""
+        languages = [l.strip() for l in lang_str.split(",") if l.strip()]
+        
+        # Parse agents from comma-separated string
+        agents_str = row[8] or "" if len(row) > 8 else ""
+        agents = [a.strip() for a in agents_str.split(",") if a.strip()]
+        
+        sessions.append({
+            "session_id": row[0],
+            "session_name": row[1] or (row[0][:8] if row[0] else "unknown"),
+            "turn_count": row[2] or 0,
+            "first_timestamp": row[3],
+            "last_timestamp": row[4],
+            "total_lines_added": row[5] or 0,
+            "total_lines_removed": row[6] or 0,
+            "languages": languages,
+            "agents": agents,
+            "total_files_edited": 0,  # Would need to aggregate from turns
+        })
+    
+    return sessions
+
+
 def query_session_turns(conn: sqlite3.Connection, session_id: str) -> List[Dict[str, Any]]:
     """Get all turns for a session.
     

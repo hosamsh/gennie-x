@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 
 from src.shared.logging.logger import get_logger, setup_logging
 from src.shared.config.config_loader import load_env, get_config
+from src.shared.io.run_dir import require_db_path
 from src.pipeline.extraction.workspace_discovery import (
     list_all_workspaces,
     list_workspaces_by_page,
@@ -186,11 +187,7 @@ async def handle_search(args: argparse.Namespace) -> None:
     from src.shared.database import db_search
 
     run_path = _require_run_dir(args, "--search")
-    db_path = run_path / "db.db"
-
-    if not db_path.exists():
-        logger.error(f"Database not found: {db_path}")
-        sys.exit(1)
+    db_path = require_db_path(run_path)
 
     if args.user_only and args.assistant_only:
         logger.error("[ERROR] Use only one of --user-only or --assistant-only")
@@ -242,11 +239,7 @@ async def handle_reindex(args: argparse.Namespace) -> None:
     from src.shared.config.config_loader import get_config
     
     run_path = _require_run_dir(args, "--reindex")
-    db_path = run_path / "db.db"
-
-    if not db_path.exists():
-        logger.error(f"Database not found: {db_path}")
-        sys.exit(1)
+    db_path = require_db_path(run_path)
 
     config = get_config().search
     model_name = args.embedding_model or config.semantic_model

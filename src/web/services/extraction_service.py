@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.shared.logging.logger import get_logger
+from src.shared.io.run_dir import get_db_path
 from src.shared.text.text_shrinker import tokenize, STOPWORDS
 from src.web.services.pipeline_run_tracker import get_pipeline_run_tracker
 from src.web.services.sse_streaming import SSELogHandler, SSELogger
@@ -150,7 +151,7 @@ def create_bulk_extraction_run(workspace_ids: list[str]) -> str:
     tracker = get_pipeline_run_tracker()
     run_id = f"bulk_extract_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    registry.create_run(
+    tracker.create_run(
         run_id,
         {
             "status": "pending",
@@ -178,7 +179,7 @@ def extract_single_workspace_sync(workspace_id: str, ws: Any, refresh: bool) -> 
         # Note: No need to manually clear data - extract_single_workspace
         # handles deletion internally when force_refresh=True is passed
         run_dir = get_shared_run_dir()
-        db_path = Path(run_dir) / "db.db"
+        db_path = get_db_path(Path(run_dir))
 
         result = extract_single_workspace(
             workspace_id=workspace_id, db_path=db_path, force_refresh=refresh

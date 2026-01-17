@@ -16,6 +16,8 @@ from pathlib import Path
 import pytest
 
 
+
+from conftest import get_test_db_path
 class TestAgentFailureIsolation:
     """T2-1: Verify one agent's error does not block others."""
 
@@ -72,7 +74,7 @@ class TestCombinedTurnsView:
         )
         assert result.returncode == 0, f"Extraction failed: {result.stderr}"
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Query sqlite_master to verify combined_turns is a VIEW
@@ -98,7 +100,7 @@ class TestCombinedTurnsView:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Attempt to insert into the view - should fail
@@ -122,7 +124,7 @@ class TestCombinedTurnsView:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Query combined_turns for exchange pairs
@@ -161,7 +163,7 @@ class TestMissingIndexRecovery:
         assert result.returncode == 0
         
         # Verify turn_embeddings table is empty (extraction doesn't create embeddings)
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         cursor = conn.execute("SELECT COUNT(*) FROM turn_embeddings")
         _embedding_count = cursor.fetchone()[0]  # noqa: F841 - verify table exists
@@ -222,7 +224,7 @@ class TestCLIWebIsolation:
         assert result.returncode == 0, f"Extraction failed: {result.stderr}"
         
         # Verify database was created
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         assert db_path.exists(), "Database not created"
 
 

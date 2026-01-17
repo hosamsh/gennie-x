@@ -8,6 +8,8 @@ Tests:
 import json
 import sqlite3
 
+from conftest import get_test_db_path
+
 
 def test_reindex_creates_fts_index(cli_runner, make_test_config, copilot_workspace, run_dir):
     """T1-8: Verify --reindex creates keyword search index."""
@@ -23,7 +25,7 @@ def test_reindex_creates_fts_index(cli_runner, make_test_config, copilot_workspa
     assert result.returncode == 0, f"Reindex failed: {result.stderr}"
     
     # Verify FTS table exists and has entries
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     
     # Check table exists

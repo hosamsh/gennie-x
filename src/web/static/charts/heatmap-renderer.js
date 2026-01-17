@@ -143,12 +143,67 @@ export function renderHeatmap(chartConfig, chartData, dashboardId) {
     }
 
     const isDateAxis = xLabels.length > 0 && xLabels.every(l => /^\d{4}-\d{1,2}-\d{1,2}$/.test(l));
+    
+    // Support x_min_span_days option for minimum date range display
+    // This ensures at least N days are shown, padding equally before and after the data
+    if (isDateAxis && options.x_min_span_days && xLabels.length > 0) {
+        const minSpanDays = Number(options.x_min_span_days);
+        if (Number.isFinite(minSpanDays) && minSpanDays > 0) {
+            const toDate = s => new Date(s + 'T00:00:00Z');
+            const toISODate = d => d.toISOString().split('T')[0];
+            
+            const sortedDates = xLabels.map(toDate).sort((a, b) => a - b);
+            const firstDate = sortedDates[0];
+            const lastDate = sortedDates[sortedDates.length - 1];
+            
+            const MS_PER_DAY = 24 * 60 * 60 * 1000;
+            const currentSpanDays = Math.round((lastDate - firstDate) / MS_PER_DAY) + 1;
+            
+            if (currentSpanDays < minSpanDays) {
+                // Calculate how many days to add before and after
+                const daysToAdd = minSpanDays - currentSpanDays;
+                const daysBefore = Math.floor(daysToAdd / 2);
+                const daysAfter = daysToAdd - daysBefore;
+                
+                // Generate the extended date range
+                const extendedStart = new Date(firstDate.getTime() - (daysBefore * MS_PER_DAY));
+                const extendedEnd = new Date(lastDate.getTime() + (daysAfter * MS_PER_DAY));
+                
+                // Build new xLabels array with all dates in range
+                const existingDates = new Set(xLabels);
+                const newXLabels = [];
+                for (let d = new Date(extendedStart); d <= extendedEnd; d.setUTCDate(d.getUTCDate() + 1)) {
+                    newXLabels.push(toISODate(d));
+                }
+                xLabels = newXLabels;
+            }
+        }
+    }
 
     const yRaw = uniq(points.map(p => p.y));
     const allNumeric = yRaw.every(v => Number.isFinite(Number(v)));
-    const yLabels = allNumeric
-        ? yRaw.map(v => Number(v)).sort((a, b) => a - b).map(v => String(v))
-        : yRaw.map(v => String(v)).sort();
+    
+    // Support y_range option for fixed numeric ranges (e.g., [0, 23] for hours)
+    let yLabels;
+    if (options.y_range && Array.isArray(options.y_range) && options.y_range.length === 2) {
+        const [yMin, yMax] = options.y_range.map(Number);
+        if (Number.isFinite(yMin) && Number.isFinite(yMax) && yMin <= yMax) {
+            // Generate all values in the range
+            yLabels = [];
+            for (let i = yMin; i <= yMax; i++) {
+                yLabels.push(String(i));
+            }
+        } else {
+            // Invalid range, fall back to data-derived labels
+            yLabels = allNumeric
+                ? yRaw.map(v => Number(v)).sort((a, b) => a - b).map(v => String(v))
+                : yRaw.map(v => String(v)).sort();
+        }
+    } else {
+        yLabels = allNumeric
+            ? yRaw.map(v => Number(v)).sort((a, b) => a - b).map(v => String(v))
+            : yRaw.map(v => String(v)).sort();
+    }
 
     const valueMap = new Map();
     for (const p of points) {

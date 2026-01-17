@@ -12,6 +12,8 @@ import sqlite3
 
 import pytest  # noqa: F401 - used for fixtures
 
+from conftest import get_test_db_path
+
 
 class TestSchemaContracts:
     """Verify essential database schema contracts."""
@@ -29,7 +31,7 @@ class TestSchemaContracts:
         )
         assert result.returncode == 0, f"Extraction failed: {result.stderr}"
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Check all required tables exist
@@ -59,7 +61,7 @@ class TestSchemaContracts:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         cursor = conn.execute(
@@ -88,7 +90,7 @@ class TestDataContracts:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Check roles
@@ -121,7 +123,7 @@ class TestDataContracts:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         cursor = conn.execute(
@@ -149,7 +151,7 @@ class TestReferentialIntegrity:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         cursor = conn.execute("""
@@ -177,7 +179,7 @@ class TestReferentialIntegrity:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         cursor = conn.execute("""
@@ -208,7 +210,7 @@ class TestDataCompleteness:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         cursor = conn.execute("SELECT role, COUNT(*) FROM turns GROUP BY role")
@@ -232,7 +234,7 @@ class TestDataCompleteness:
         )
         assert result.returncode == 0
         
-        db_path = run_dir / "db.db"
+        db_path = get_test_db_path(run_dir)
         conn = sqlite3.connect(str(db_path))
         
         # Get recorded counts

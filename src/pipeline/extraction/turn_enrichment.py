@@ -1,7 +1,8 @@
 """Converts raw Turns to enriched Turns with tokens, languages, metrics, and cleaned text."""
 from __future__ import annotations
 
-from typing import List, Union
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
 from src.shared.models.turn import Turn, CodeEdit, EnrichedTurn, calculate_turn_metrics, calculate_response_times
 from src.shared.code.code_metrics import calculate_metrics, count_diff_lines
@@ -10,6 +11,7 @@ from src.shared.llm.token_utils import estimate_tokens, estimate_tool_tokens
 from src.shared.llm.model_names import normalize_model_id
 from src.shared.text.text_shrinker import TextShrinker
 from src.shared.logging.logger import get_logger
+from src.shared.config.config_loader import get_config
 
 logger = get_logger(__name__)
 
@@ -21,6 +23,63 @@ def _get_text_shrinker() -> TextShrinker:
     if _text_shrinker is None:
         _text_shrinker = TextShrinker()
     return _text_shrinker
+
+
+def _resolve_model_fallback(agent_used: Optional[str], timestamp_ms: Optional[int]) -> Optional[str]:
+    """Resolve fallback model_id from config based on agent and timestamp.
+    
+    Uses model_defaults config to find the appropriate default model:
+    1. If model_defaults is disabled, returns None
+    2. Looks up the agent-specific config (copilot, cursor, etc.)
+    3. Finds the most recent timeline entry before the turn's timestamp
+    4. Falls back to the agent's "default" if no timeline match
+    
+    Args:
+        agent_used: The agent name (e.g., "copilot", "cursor")
+        timestamp_ms: The turn's timestamp in milliseconds
+        
+    Returns:
+        The fallback model_id or None if no fallback configured
+    """
+    if not agent_used:
+        return None
+    
+    config = get_config()
+    model_defaults = config.model_defaults
+    
+    if not model_defaults.enabled:
+        return None
+    
+    # Get agent-specific config
+    agent_config: Dict[str, Any] = {}
+    agent_lower = agent_used.lower()
+    if agent_lower == "copilot":
+        agent_config = model_defaults.copilot
+    elif agent_lower == "cursor":
+        agent_config = model_defaults.cursor
+    
+    if not agent_config:
+        return None
+    
+    # Try timeline lookup if we have a timestamp
+    timeline = agent_config.get("timeline", {})
+    if timeline and timestamp_ms:
+        turn_date = datetime.utcfromtimestamp(timestamp_ms / 1000).strftime("%Y-%m-%d")
+        
+        # Find the most recent timeline entry before or on the turn date
+        matching_model = None
+        matching_date = None
+        for date_str, model in timeline.items():
+            if date_str <= turn_date:
+                if matching_date is None or date_str > matching_date:
+                    matching_date = date_str
+                    matching_model = model
+        
+        if matching_model:
+            return matching_model
+    
+    # Fall back to agent default
+    return agent_config.get("default")
 
 
 def enrich_code_edit(base: CodeEdit) -> CodeEdit:
@@ -122,6 +181,10 @@ def enrich_turn(base: Turn) -> EnrichedTurn:
     
     thinking_tokens = estimate_tokens(base.thinking_text) if base.thinking_text else 0
     
+    model_id = normalize_model_id(base.model_id) or base.model_id
+    if not model_id:
+        model_id = _resolve_model_fallback(base.agent_used, base.timestamp_ms)
+        
     turn = EnrichedTurn(
         session_id=base.session_id,
         turn=base.turn,
@@ -142,7 +205,7 @@ def enrich_turn(base: Turn) -> EnrichedTurn:
         tools=list(base.tools),
         extra=dict(base.extra) if base.extra else {},
         code_edits=enriched_edits,
-        model_id=normalize_model_id(base.model_id) or base.model_id,
+        model_id=model_id,
         languages=languages,
         primary_language=primary_language,
         thinking_text=base.thinking_text,

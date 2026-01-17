@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import get_test_db_path
+
 
 def test_extract_single_workspace_creates_database(cli_runner, make_test_config, copilot_workspace, run_dir):
     """T1-4: Verify extraction creates SQLite database with turns."""
@@ -23,7 +25,7 @@ def test_extract_single_workspace_creates_database(cli_runner, make_test_config,
     assert result.returncode == 0, f"Extraction failed: {result.stderr}"
     
     # Check database exists
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     assert db_path.exists(), "Database file not created"
     
     # Verify turns table has data
@@ -57,7 +59,7 @@ def test_extract_all_workspaces(cli_runner, make_test_config, copilot_workspace,
     assert result.returncode == 0, f"Extraction failed: {result.stderr}"
     
     # Check database exists
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     assert db_path.exists()
     
     # Verify workspace_info contains entries for both workspaces
@@ -81,7 +83,7 @@ def test_extract_idempotent_without_refresh(cli_runner, make_test_config, copilo
     result1 = cli_runner("--extract", workspace_id, "--run-dir", str(run_dir), config_path=config_path)
     assert result1.returncode == 0
     
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.execute("SELECT COUNT(*) FROM turns WHERE workspace_id = ?", (workspace_id,))
     turn_count_1 = cursor.fetchone()[0]
@@ -110,7 +112,7 @@ def test_extract_force_refresh_replaces_data(cli_runner, make_test_config, copil
     result1 = cli_runner("--extract", workspace_id, "--run-dir", str(run_dir), config_path=config_path)
     assert result1.returncode == 0
     
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     cursor = conn.execute("SELECT COUNT(*) FROM turns WHERE workspace_id = ?", (workspace_id,))
     turn_count_1 = cursor.fetchone()[0]
@@ -165,7 +167,7 @@ def test_extraction_populates_enriched_fields(cli_runner, make_test_config, copi
     
     assert result.returncode == 0, f"Extraction failed: {result.stderr}"
     
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     
     # Check cleaned_text_tokens > 0 for turns with text
@@ -241,7 +243,7 @@ def test_extraction_creates_code_metrics_when_edits_present(
     
     assert result.returncode == 0, f"Extraction failed: {result.stderr}"
     
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     
     # Check code_metrics table exists
@@ -305,7 +307,7 @@ def test_cleaned_text_differs_from_original_when_shrinking_applies(
     
     assert result.returncode == 0, f"Extraction failed: {result.stderr}"
     
-    db_path = run_dir / "db.db"
+    db_path = get_test_db_path(run_dir)
     conn = sqlite3.connect(str(db_path))
     
     # Find turns with long original text

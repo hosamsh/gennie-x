@@ -56,6 +56,8 @@ web:
   run_dir: "./data/web"
   # Port for the web server
   port: 8000
+  # Database filename (stored in run_dir)
+  db_filename: "gennie.db"
 
 search:
   # Search behavior and thresholds
@@ -72,7 +74,7 @@ search:
   # Local embedding model (sentence-transformers)
   semantic_model: "sentence-transformers/all-MiniLM-L6-v2"
   # Embedding job settings
-  embedding_batch_size: 64
+  embedding_batch_size: 256
   # Hard cap for page size
   max_page_size: 100
   # Auto-generate embeddings during extraction (enables semantic search)

@@ -59,6 +59,28 @@ class ClaudeCodeExtractor(AgentExtractor):
         """Get history file from config or use default."""
         return self._get_claude_dir() / "history.jsonl"
 
+    def _session_has_content(self, session_file: Path) -> bool:
+        """Check if a session file has actual conversation content (user/assistant messages).
+        
+        Session files may only contain metadata like file-history-snapshot which means
+        the session was started but no actual conversation occurred.
+        """
+        try:
+            content = session_file.read_text(encoding='utf-8')
+            for line in content.strip().split('\n'):
+                if not line.strip():
+                    continue
+                try:
+                    msg = json.loads(line)
+                    msg_type = msg.get('type')
+                    if msg_type in ('user', 'assistant'):
+                        return True
+                except json.JSONDecodeError:
+                    continue
+            return False
+        except Exception:
+            return False
+
     def scan_workspaces(self) -> List[WorkspaceInfo]:
         """Scan ~/.claude/history.jsonl and projects dir."""
         workspaces = []
@@ -102,8 +124,9 @@ class ClaudeCodeExtractor(AgentExtractor):
             # "const projectPath = join(projectsDir, dir.name)" -> It is a directory.
             
             if ws_dir.exists() and ws_dir.is_dir():
-                # Count sessions
+                # Count sessions that have actual conversation content
                 session_files = list(ws_dir.glob("*.jsonl"))
+                valid_session_count = 0
                 
                 # Get last modified
                 last_modified = 0
@@ -112,8 +135,16 @@ class ClaudeCodeExtractor(AgentExtractor):
                         mtime = sf.stat().st_mtime
                         if mtime > last_modified:
                             last_modified = mtime
+                        # Check if session has real content (user/assistant messages)
+                        if self._session_has_content(sf):
+                            valid_session_count += 1
                     except OSError:
                         pass
+                
+                # Skip workspaces with no valid sessions
+                if valid_session_count == 0:
+                    logger.debug(f"Skipping workspace {encoded} - no sessions with content")
+                    continue
                 
                 dt = datetime.fromtimestamp(last_modified, tz=timezone.utc) if last_modified > 0 else datetime.now(timezone.utc)
 
@@ -122,7 +153,7 @@ class ClaudeCodeExtractor(AgentExtractor):
                     workspace_name=Path(p_path).name,
                     workspace_folder=p_path,
                     agents=[self.AGENT_NAME],
-                    session_count=len(session_files),
+                    session_count=valid_session_count,
                 ))
         
         return workspaces
@@ -159,13 +190,38 @@ class ClaudeCodeExtractor(AgentExtractor):
         # We will infer name from ID for now.
         
         # We need to find the "Project Path" (e.g. c:/code/...) 
-        # We can actually read it from the session files! 
-        # But session files are just messages.
+        # Read from history.jsonl to find the actual folder path for this encoded workspace
+        actual_folder_path = None
+        history_file = self._get_history_file()
+        if history_file.exists():
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        try:
+                            entry = json.loads(line)
+                            p_path = entry.get('project')
+                            if p_path and encode_project_path(p_path) == encoded_path:
+                                actual_folder_path = p_path
+                                break
+                        except (json.JSONDecodeError, KeyError):
+                            continue
+            except Exception as e:
+                logger.warning(f"Could not read history.jsonl for folder lookup: {e}")
         
-        # Let's scan history ONE time to build a map if needed.
-        # Or just use the encoded path as the handle.
+        # Fallback: if we couldn't find the folder in history, use encoded path
+        if not actual_folder_path:
+            logger.warning(f"Could not find actual folder path for {encoded_path}, using encoded path")
+            actual_folder_path = encoded_path
         
         session_files = list(ws_dir.glob("*.jsonl"))
+        
+        # First pass: load all sessions and extract fingerprints for deduplication
+        # Claude Code sometimes creates multiple session files where one is a 
+        # subset/checkpoint of another. We deduplicate by keeping only the 
+        # largest session when one is a complete subset of another.
+        loaded_sessions: dict[str, tuple[list[dict], set[tuple[str, str]]]] = {}
         
         for sf in session_files:
             session_id = sf.stem
@@ -180,13 +236,30 @@ class ClaudeCodeExtractor(AgentExtractor):
                         messages.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
-
+                
+                # Extract fingerprint: set of (timestamp, content_preview) for user messages
+                fingerprint = self._extract_session_fingerprint(messages)
+                loaded_sessions[session_id] = (messages, fingerprint)
+                
+            except Exception as e:
+                logger.error(f"Error loading session {sf}: {e}")
+        
+        # Deduplicate: identify sessions that are subsets of others
+        sessions_to_skip = self._find_subset_sessions(loaded_sessions)
+        if sessions_to_skip:
+            logger.info(f"Skipping {len(sessions_to_skip)} subset session(s): {sessions_to_skip}")
+        
+        # Second pass: convert non-duplicate sessions to turns
+        for session_id, (messages, _) in loaded_sessions.items():
+            if session_id in sessions_to_skip:
+                continue
+            try:
                 # Convert messages to Turns
-                session_turns = self._convert_session(session_id, messages, encoded_path)
+                session_turns = self._convert_session(session_id, messages, encoded_path, actual_folder_path)
                 all_turns.extend(session_turns)
                 
             except Exception as e:
-                logger.error(f"Error extracting session {sf}: {e}")
+                logger.error(f"Error extracting session {session_id}: {e}")
 
         # Sort all turns by timestamp
         all_turns.sort(key=lambda t: t.timestamp_ms or 0)
@@ -207,7 +280,76 @@ class ClaudeCodeExtractor(AgentExtractor):
             code_metrics=[],
         )
 
-    def _convert_session(self, session_id: str, messages: List[dict], workspace_encoded: str) -> List[Turn]:
+    def _extract_session_fingerprint(self, messages: List[dict]) -> set[tuple[str, str]]:
+        """Extract a fingerprint from session messages for deduplication.
+        
+        Returns a set of (timestamp, content_preview) tuples for user messages.
+        This allows detecting when one session is a subset of another.
+        """
+        fingerprint: set[tuple[str, str]] = set()
+        
+        for msg in messages:
+            if msg.get('type') != 'user':
+                continue
+            
+            ts = msg.get('timestamp', '')
+            content = msg.get('message', {}).get('content', '')
+            
+            # Extract text preview from content
+            preview = ''
+            if isinstance(content, str):
+                preview = content[:200]
+            elif isinstance(content, list):
+                for block in content:
+                    if block.get('type') == 'text':
+                        preview = block.get('text', '')[:200]
+                        break
+            
+            if ts or preview:  # Include if we have either
+                fingerprint.add((ts, preview))
+        
+        return fingerprint
+    
+    def _find_subset_sessions(
+        self, 
+        loaded_sessions: dict[str, tuple[list[dict], set[tuple[str, str]]]]
+    ) -> set[str]:
+        """Find sessions that are complete subsets of other sessions.
+        
+        Returns session IDs that should be skipped (they are subsets of larger sessions).
+        """
+        sessions_to_skip: set[str] = set()
+        session_ids = list(loaded_sessions.keys())
+        
+        for i in range(len(session_ids)):
+            s1_id = session_ids[i]
+            _, fp1 = loaded_sessions[s1_id]
+            
+            # Skip empty sessions
+            if not fp1:
+                sessions_to_skip.add(s1_id)
+                continue
+            
+            for j in range(i + 1, len(session_ids)):
+                s2_id = session_ids[j]
+                _, fp2 = loaded_sessions[s2_id]
+                
+                if not fp2:
+                    continue
+                
+                # Check if one is a subset of the other
+                if fp1.issubset(fp2) and fp1 != fp2:
+                    # s1 is a subset of s2, skip s1
+                    sessions_to_skip.add(s1_id)
+                    logger.debug(f"Session {s1_id[:8]}... is subset of {s2_id[:8]}...")
+                elif fp2.issubset(fp1) and fp2 != fp1:
+                    # s2 is a subset of s1, skip s2
+                    sessions_to_skip.add(s2_id)
+                    logger.debug(f"Session {s2_id[:8]}... is subset of {s1_id[:8]}...")
+        
+        return sessions_to_skip
+
+    def _convert_session(self, session_id: str, messages: List[dict], workspace_encoded: str, workspace_folder: str) -> List[Turn]:
         """Convert raw Claude Code messages to aggregated turns.
         
         Claude Code stores each tool_use and tool_result as separate messages, which leads to:
@@ -541,7 +683,7 @@ class ClaudeCodeExtractor(AgentExtractor):
                 original_text=text,
                 workspace_id=workspace_encoded,
                 workspace_name=workspace_encoded,
-                workspace_folder=workspace_encoded,
+                workspace_folder=workspace_folder,  # Use actual folder path for cross-agent consolidation
                 session_name=session_id,
                 agent_used=self.AGENT_NAME,
                 timestamp_ms=agg['ts_ms'],

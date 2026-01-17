@@ -244,118 +244,7 @@ export function createChart(ctx, chartConfig, data) {
             };
             break;
         }
-        case 'pie':
-        case 'doughnut':
-            config = {
-                type: chartType,
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: chartColors,
-                        borderColor: 'rgba(19, 91, 236, 0.2)',
-                        borderWidth: 2,
-                        hoverBorderColor: '#22d3ee',
-                        hoverBorderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: options.cutout || (chartType === 'doughnut' ? '50%' : 0),
-                    plugins: {
-                        legend: { 
-                            position: options.legend_position || 'bottom',
-                            labels: {
-                                color: '#67e8f9',
-                                padding: 12,
-                                font: { family: 'Space Grotesk', size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: '#0a1628',
-                            titleColor: '#67e8f9',
-                            bodyColor: '#fff',
-                            borderColor: '#22d3ee',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: (context) => {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return options.show_percentages 
-                                        ? `${label}: ${value} (${pct}%)`
-                                        : `${label}: ${value}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-            break;
-            
-        case 'horizontal_bar':
-            // If percentage_scale is true, treat values as percentages (0-100) and show x-axis as 0-100%
-            const isPercentageScale = options.percentage_scale === true;
-            const displayValues = isPercentageScale ? values : values;
-            
-            config = {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: isPercentageScale ? 'Rate' : 'Count',
-                        data: displayValues,
-                        backgroundColor: chartColors,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#0a1628',
-                            titleColor: '#67e8f9',
-                            bodyColor: '#fff',
-                            borderColor: '#22d3ee',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: (context) => {
-                                    const value = context.parsed.x;
-                                    if (isPercentageScale) {
-                                        return `${value.toFixed(1)}%`;
-                                    }
-                                    const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                    return options.show_percentages 
-                                        ? `Count: ${value} (${pct}%)`
-                                        : `Count: ${value}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { 
-                            beginAtZero: true,
-                            max: isPercentageScale ? 100 : undefined,
-                            ticks: { 
-                                color: '#67e8f9',
-                                callback: isPercentageScale ? (value) => `${value}%` : undefined
-                            },
-                            grid: { color: 'rgba(34, 211, 238, 0.15)' }
-                        },
-                        y: {
-                            barPercentage: 0.7,
-                            categoryPercentage: 0.8,
-                            ticks: { color: '#67e8f9' },
-                            grid: { display: false }
-                        }
-                    }
-                }
-            };
-            break;
-            
+        
         case 'area':
             // Area chart for categorical data - show as stacked horizontal bar
             config = {
@@ -487,6 +376,122 @@ export function createChart(ctx, chartConfig, data) {
             };
             break;
         }
+
+        case 'pie':
+        case 'doughnut':
+            config = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: chartColors,
+                        borderColor: 'rgba(19, 91, 236, 0.2)',
+                        borderWidth: 2,
+                        hoverBorderColor: '#22d3ee',
+                        hoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: options.cutout || (chartType === 'doughnut' ? '50%' : 0),
+                    plugins: {
+                        legend: { 
+                            position: options.legend_position || 'bottom',
+                            labels: {
+                                color: '#67e8f9',
+                                padding: 12,
+                                font: { family: 'Space Grotesk', size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#0a1628',
+                            titleColor: '#67e8f9',
+                            bodyColor: '#fff',
+                            borderColor: '#22d3ee',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return options.show_percentages 
+                                        ? `${label}: ${value} (${pct}%)`
+                                        : `${label}: ${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+            break;
+            
+        case 'horizontal_bar':
+            // If percentage_scale is true, treat values as percentages (0-100) and show x-axis as 0-100%
+            const isPercentageScale = options.percentage_scale === true;
+            // If integer_scale is true, only show whole numbers on x-axis (useful for counts)
+            const isIntegerScale = options.integer_scale === true;
+            const displayValues = isPercentageScale ? values : values;
+            
+            config = {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: isPercentageScale ? 'Rate' : 'Count',
+                        data: displayValues,
+                        backgroundColor: chartColors,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0a1628',
+                            titleColor: '#67e8f9',
+                            bodyColor: '#fff',
+                            borderColor: '#22d3ee',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: (context) => {
+                                    const value = context.parsed.x;
+                                    if (isPercentageScale) {
+                                        return `${value.toFixed(1)}%`;
+                                    }
+                                    const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return options.show_percentages 
+                                        ? `Count: ${value} (${pct}%)`
+                                        : `Count: ${value}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true,
+                            max: isPercentageScale ? 100 : undefined,
+                            ticks: { 
+                                color: '#67e8f9',
+                                callback: isPercentageScale ? (value) => `${value}%` : undefined,
+                                precision: isIntegerScale ? 0 : undefined,
+                                stepSize: isIntegerScale ? 1 : undefined
+                            },
+                            grid: { color: 'rgba(34, 211, 238, 0.15)' }
+                        },
+                        y: {
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.8,
+                            ticks: { color: '#67e8f9' },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            };
+            break;
             
         case 'bar':
         default:

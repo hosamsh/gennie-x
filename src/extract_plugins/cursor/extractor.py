@@ -18,26 +18,25 @@ from .turns import WorkspaceMeta, TurnBuilder
 logger = get_logger(__name__)
 
 
-def get_workspace_storage() -> Path:
-    """Get Cursor workspace storage path for current platform."""
+def _get_cursor_user_dir() -> Path:
+    """Get Cursor User directory for current platform."""
     system = platform.system()
     if system == "Windows":
-        return Path(os.environ.get("APPDATA", "")) / "Cursor/User/workspaceStorage"
+        return Path(os.environ.get("APPDATA", "")) / "Cursor/User"
     elif system == "Darwin":
-        return Path.home() / "Library/Application Support/Cursor/User/workspaceStorage"
+        return Path.home() / "Library/Application Support/Cursor/User"
     else:
-        return Path.home() / ".config/Cursor/User/workspaceStorage"
+        return Path.home() / ".config/Cursor/User"
+
+
+def get_workspace_storage() -> Path:
+    """Get Cursor workspace storage path for current platform."""
+    return _get_cursor_user_dir() / "workspaceStorage"
 
 
 def get_global_storage() -> Path:
     """Get Cursor global storage path for current platform."""
-    system = platform.system()
-    if system == "Windows":
-        return Path(os.environ.get("APPDATA", "")) / "Cursor/User/globalStorage"
-    elif system == "Darwin":
-        return Path.home() / "Library/Application Support/Cursor/User/globalStorage"
-    else:
-        return Path.home() / ".config/Cursor/User/globalStorage"
+    return _get_cursor_user_dir() / "globalStorage"
 
 
 def _get_global_db_path() -> Path:
@@ -154,13 +153,13 @@ def discover_workspaces(
         logger.debug(f"Workspace storage not found: {workspace_storage}")
         return []
     
-    # Open global database once for all validation
+    # Open global database once for all validation (optional - some data lives here)
     global_conn = None
     if global_db_path.exists():
         try:
             global_conn = sqlite3.connect(str(global_db_path))
         except sqlite3.Error as e:
-            logger.debug(f"Could not open global database: {e}")
+            logger.debug(f"Could not open Cursor global database (may be locked): {e}")
     
     workspaces = []
     

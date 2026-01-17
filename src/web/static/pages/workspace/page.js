@@ -35,8 +35,10 @@ const WorkspacePage = {
         // Initialize history state management
         this.initHistoryHandling();
         
-        // Restore view state from URL on page load
-        this.restoreViewFromUrl();
+        // NOTE: Do NOT call restoreViewFromUrl() here!
+        // The deep-link session view is restored in loadWorkspaceStatus() after
+        // sessions are loaded and main content is visible. Otherwise, turn text
+        // clamps won't work because scrollHeight=0 when content is hidden.
         
         this.loadWorkspaceStatus();
     },
@@ -439,12 +441,12 @@ const WorkspacePage = {
                 await this.loadSessions();
                 await this.loadDashboard();
                 this.showMainContent();
-                // Only switch to the dashboard if we're not already viewing a session.
-                // When restoring from a deep link the currentView may be 'session',
-                // so avoid overriding it and avoid pushing a new history entry.
-                if (this.currentView !== 'session') {
-                    this.showDashboard(true);
-                }
+                
+                // Now that sessions are loaded and content is visible,
+                // restore the view from URL (handles deep links to sessions).
+                // This ensures turn text clamps work correctly since the DOM
+                // is visible and scrollHeight can be measured accurately.
+                this.restoreViewFromUrl();
                 
                 // Check if source has newer data
                 if (this.workspaceStatus.source_available) {
@@ -678,6 +680,14 @@ const WorkspacePage = {
         document.getElementById('current-session-subtitle').textContent = 
             session?.first_timestamp ? new Date(session.first_timestamp).toLocaleString() : '';
         
+        // Show agent icon next to session name
+        const agentIconEl = document.getElementById('session-agent-icon');
+        if (agentIconEl && session?.agent) {
+            agentIconEl.innerHTML = AgentInfo.renderLogo(session.agent, 5);
+        } else if (agentIconEl) {
+            agentIconEl.innerHTML = '';
+        }
+        
         Sessions.renderStats(session);
         
         // Load turns
@@ -720,39 +730,171 @@ const WorkspacePage = {
     },
 
     /**
-     * Load dashboard
+     * Export current session as Markdown
      */
-    async loadDashboard() {
-        try {
-            await this.loadDeclarativeDashboard('extraction');
-        } catch (error) {
-            console.error('Failed to load dashboard:', error);
-            // Display error state
-            const container = document.getElementById('extraction-tab-content');
-            if (container) {
-                container.innerHTML = '<div class="text-center py-12"><p class="text-terminal-gray font-mono">Failed to load dashboard. Please refresh the page.</p></div>';
-            }
+    async exportSessionMarkdown() {
+        const sessionId = Sessions.currentId;
+        if (!sessionId) {
+            console.warn('No session selected for export');
+            return;
         }
+
+        try {
+            await Turns.load(sessionId);
+        } catch (error) {
+            console.error('Failed to load turns for export:', error);
+            return;
+        }
+
+        const session = Sessions.getById(sessionId);
+        const markdown = this.buildSessionMarkdown(sessionId, session, Turns.list || []);
+        const filename = this.buildSessionMarkdownFilename(sessionId, session);
+        this.downloadTextFile(markdown, filename, 'text/markdown');
     },
 
     /**
-     * Load declarative dashboard
+     * Build Markdown for a session
      */
-    async loadDeclarativeDashboard(dashboardId) {
+    buildSessionMarkdown(sessionId, session, turns) {
+        const title = session?.session_name || sessionId.substring(0, 12);
+        const exportedAt = new Date().toISOString();
+        const firstTimestamp = session?.first_timestamp
+            ? new Date(session.first_timestamp).toLocaleString()
+            : '';
+
+        const lines = [];
+        lines.push(`# ${title}`);
+        lines.push('');
+        lines.push(`- Session ID: ${sessionId}`);
+        lines.push(`- Workspace ID: ${this.workspaceId}`);
+        if (firstTimestamp) {
+            lines.push(`- Session Start: ${firstTimestamp}`);
+        }
+        lines.push(`- Exported At: ${exportedAt}`);
+        lines.push(`- Turn Count: ${turns.length}`);
+        lines.push('');
+
+        turns.forEach(turn => {
+            const role = turn.role ? turn.role.charAt(0).toUpperCase() + turn.role.slice(1) : 'Turn';
+            const timestamp = turn.timestamp_iso ? new Date(turn.timestamp_iso).toLocaleString() : '';
+            const turnLabel = `## ${role} — turn ${turn.turn}`;
+            lines.push(turnLabel);
+            if (timestamp) {
+                lines.push(`> ${timestamp}`);
+            }
+            lines.push('');
+
+            let text = turn.original_text || turn.text || '';
+            if (turn.role !== 'user') {
+                text = Turns._stripAssistantMetadata(text);
+            }
+            text = String(text || '').trimEnd();
+            lines.push(text || '_No content_');
+            lines.push('');
+        });
+
+        return lines.join('\n');
+    },
+
+    /**
+     * Build a safe filename for markdown export
+     */
+    buildSessionMarkdownFilename(sessionId, session) {
+        const rawName = session?.session_name || sessionId;
+        const safeName = String(rawName || '')
+            .replace(/[^a-z0-9-_]+/gi, '_')
+            .replace(/^_+|_+$/g, '');
+        const base = safeName || sessionId.substring(0, 12);
+        return `session_${base}.md`;
+    },
+
+    /**
+     * Download a text file in the browser
+     */
+    downloadTextFile(content, filename, mimeType = 'text/plain') {
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    },
+
+    /**
+     * Load dashboard
+     */
+    async loadDashboard() {
         const containerId = 'extraction-tab-content';
+        const dashboardId = 'extraction';
+        const container = document.getElementById(containerId);
         
-        // Wait for DashboardRenderer to be ready (if not already loaded)
-        if (!window.DashboardRenderer) {
-            await new Promise((resolve) => {
-                if (window.DashboardRenderer) {
-                    resolve();
-                } else {
-                    window.addEventListener('DashboardRendererReady', resolve, { once: true });
-                }
-            });
+        try {
+            // Try to use DashboardRenderer if available (wait up to 500ms)
+            const renderer = await this.waitForRenderer(500);
+            
+            if (renderer) {
+                await renderer.renderDeclarativeDashboard(containerId, this.workspaceId, dashboardId);
+            } else {
+                // ES6 module not loaded - fetch data directly and render basic metrics
+                const data = await this.fetchDashboardData(dashboardId);
+                this.renderBasicDashboard(container, data);
+            }
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+            if (container) {
+                container.innerHTML = `<div class="text-center py-12 text-red-500 font-mono">Failed to load dashboard</div>`;
+            }
+        }
+    },
+    
+    /**
+     * Wait for DashboardRenderer module
+     */
+    waitForRenderer(maxWaitMs) {
+        if (window.DashboardRenderer) return Promise.resolve(window.DashboardRenderer);
+        
+        return new Promise(resolve => {
+            const start = Date.now();
+            const check = () => {
+                if (window.DashboardRenderer) return resolve(window.DashboardRenderer);
+                if (Date.now() - start >= maxWaitMs) return resolve(null);
+                setTimeout(check, 25);
+            };
+            check();
+        });
+    },
+    
+    /**
+     * Fetch dashboard data from API
+     */
+    async fetchDashboardData(dashboardId) {
+        const response = await fetch(`/api/browse/workspace/${this.workspaceId}/dashboards/${dashboardId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    },
+    
+    /**
+     * Render basic dashboard (fallback when ES6 module unavailable)
+     */
+    renderBasicDashboard(container, data) {
+        if (!data.is_available) {
+            container.innerHTML = `<div class="text-center py-12 text-terminal-gray font-mono">${data.message || 'Dashboard not available'}</div>`;
+            return;
         }
         
-        await window.DashboardRenderer.renderDeclarativeDashboard(containerId, this.workspaceId, dashboardId);
+        const metrics = data.data?.metrics || {};
+        const config = data.config || {};
+        
+        let html = '<div class="metrics-grid mb-6">';
+        for (const m of (config.metrics || [])) {
+            const val = metrics[m.id];
+            html += `<div class="metric-card"><p class="metric-label">${m.title}</p><div class="metric-value">${val ?? '-'}</div></div>`;
+        }
+        html += '</div><p class="text-terminal-gray text-sm font-mono text-center">Charts require a browser with ES6 module support</p>';
+        container.innerHTML = html;
     },
 
     /**

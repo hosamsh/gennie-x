@@ -10,7 +10,7 @@ from typing import List, Optional
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-from .features import extract_features, features_to_vector
+from .features import extract_features, features_to_vector, extract_features_batch
 
 
 class LineClassifier:
@@ -60,7 +60,8 @@ class LineClassifier:
         if self.model is None:
             raise RuntimeError("Model not loaded. Train or load a model first.")
         
-        X = np.array([features_to_vector(extract_features(t)) for t in texts])
+        # Use optimized batch feature extraction
+        X = extract_features_batch(texts)
         y_pred = self.model.predict(X)
         return list(self.label_encoder.inverse_transform(y_pred))
     

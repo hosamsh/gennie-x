@@ -1,37 +1,47 @@
-# AI Coding Agent Chat Extractor
+# Gennie-X: AI Coding Agent Chat Extractor
 
-> **⚠️ 100% AI-Generated Project**: The entire codebase (except small parts of the configs/docs) was built entirely by AI coding agents. Zero human-written code. This is an experiment in end-to-end AI-driven development, so, expect alpha-quality with rough edges. Feedback is most welcome!
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/badge/uv-package%20manager-blueviolet)](https://github.com/astral-sh/uv) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> **⚠️ 100% AI-Generated Project**: This is an experiment in end-to-end AI-driven development, so expect alpha-quality with rough edges. The entire codebase was built by AI coding agents. Zero human-written code. Feedback most welcome!
+
 
 ## 🔬 What is This?
-This is a personal tool for extracting and navigating conversation data from various coding agents in one place. Supports GitHub Copilot, Cursor and Claude Code.
+
+**Gennie‑X** extracts and indexes conversations from multiple AI coding assistants into a single, searchable local database. Use it to analyze agent interactions, run semantic search, and generate usage reports. Currently supported sources: GitHub Copilot, Cursor, and Claude Code.
+
+### ✨ Features
+
+- **Multi-Agent Support**: Extract conversations from GitHub Copilot, Cursor, and Claude Code
+- **Web Dashboard**: Local web UI to browse workspaces, view analytics, and explore conversations
+- **CLI Interface**: Equivalent command-line tools for automation and scripting
+- **Semantic Search**: Search through your conversation history with AI-powered semantic search (Sentence Transformers embeddings + SQLite FTS5 keyword search)
+- **Code Metrics Extraction**: Extracts code metrics (via `lizard` and related tooling) to summarize complexity and size across extracted code artifacts
+- **Plugins**: extensible to support new AI coding agents
+
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Python 3.11 or higher
-- [uv](https://github.com/astral-sh/uv)
-- One or more of the supported AI coding agents installed (GitHub Copilot / Cursor / Claude Code)
+- [uv](https://github.com/astral-sh/uv) - Fast Python package manager
+- One or more supported AI coding agents installed (GitHub Copilot / Cursor / Claude Code)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/hosamsh/_chat-extractor-trunk0701.git chat-extractor
-   cd chat-extractor
+   git clone https://github.com/hosamsh/gennie-x.git
+   cd gennie-x
    ```
 
 2. **Install dependencies**
    ```bash
    # CPU-only (default, works on all machines)
    uv sync
-   
-   # OR for GPU acceleration (NVIDIA GPUs only, ~10-100x faster embeddings)
-   # If you have requirements-gpu.txt available
-   uv pip install -r requirements-gpu.txt
    ```
-   
-   > **GPU Support**: The GPU version requires an NVIDIA GPU with CUDA support. Semantic search embeddings will automatically use GPU if available, significantly speeding up the `--reindex` command.
 
 ### Basic Usage
 
@@ -61,19 +71,46 @@ uv run python run_cli.py --extract <workspace-id> --run-dir data/<dir-name>
 # Extract all workspaces for a specific agent
 uv run python run_cli.py --extract --all --agent <copilot|cursor|claude_code> --run-dir data/<dir-name>
 
+# Refresh an existing workspace (incremental sync; only new/changed turns)
+uv run python run_cli.py --extract <workspace-id> --run-dir data/<dir-name>
+
+# Refresh an existing workspace (full re-ingest; reprocess everything)
+uv run python run_cli.py --extract <workspace-id> --run-dir data/<dir-name> --force-refresh
+
+# Full reset (erase DB, then re-ingest)
+rm -rf data/<dir-name>
+uv run python run_cli.py --extract <workspace-id> --run-dir data/<dir-name>
+
 # Search through extracted conversations
 uv run python run_cli.py --search "your search query" --run-dir data/<dir-name>
 ```
 
 ## 📝 Configuration
 
-### Main Config (`config/config.yaml`)
+### Main Config
 
-- **Agent Settings**: Workspace paths for each agent
-- **Extraction**: Text shrinking, output directories
-- **Web**: Server port and run directory
+- Location: config/config.yaml (loaded by default)
+- Example: config/config.example.yaml (copy/compare for defaults)
 
-You can also edit the configs through the web interface.
+**Sections:**
+- **extract**: text shrinking + agent storage/output paths
+- **web**: web UI run directory and port
+- **search**: search mode, thresholds, embedding model + batch size, auto-embed
+- **token_estimation**: token estimation heuristics
+- **loc_counting**: rules for couting lines of code
+- **logging**: log level
+
+You can also edit the config via the web UI.
+
+
+## ⚡ Optional GPU Acceleration
+
+If you want faster embedding generation, you can enable GPU support:
+
+1. Install a CUDA‑enabled PyTorch build (see requirements-gpu.txt for guidance).
+2. Then install the rest of the dependencies.
+
+To choose the right CUDA wheel: (1) check your NVIDIA driver/CUDA capability (e.g., from `nvidia-smi`), (2) pick the matching CUDA version on the PyTorch install page (e.g., cu118 or cu121), and (3) use that index URL in requirements-gpu.txt.
 
 ### Adding a New Agent
 
@@ -85,29 +122,31 @@ You can also edit the configs through the web interface.
 
 See [Agent Extractor Interface Docs](src/extract_plugins/readme.md)
 
+
 ## 🧪 Running Tests
+see [Tests](tests/readme.md)
 
-This project uses **uv** for package management (not traditional venv). Always run commands via `uv run`:
-
-```bash
-# Run all tests
-uv run pytest tests/
-
-# Run only unit tests
-uv run pytest tests/unit/
-
-# Run only integration tests
-uv run pytest tests/integration/
-
-# Run specific test file
-uv run pytest tests/unit/test_cli_search.py -v
-```
 
 > **Note**: Do not use `python -m pytest` or activate a `.venv` manually - use `uv run pytest` instead.
 
 ## 📋 Issues & Limitations
-- Primarily tested on Windows paths
-- Duplicate workspace entries may appear when Claude Code + other agents reference the same project
-- Claude Code session names are GUIDs
-- Left-side navigation may flicker briefly on page loads
 
+- Primarily tested on Windows
+- Duplicate workspace entries when edited by Claude Code + other vs-code based agents
+- Claude Code session names are GUIDs
+- Left-side navigation resize briefly on page loads
+
+
+## 🤝 Contributing
+
+TBD.
+
+## 📄 License
+
+You’re free to use, copy, modify, and redistribute this project.
+
+---
+
+## ⚠️ Note about Extraction Reliability
+
+Gennie‑X reads agent‑specific local storage formats to reconstruct conversations. Those formats and field locations can change between agent releases, and there is no universal standard—so extraction is best‑effort and may require occasional updates to extractors. If you notice missing or misaligned data, please open an issue; contributions to improve extractor robustness are welcome.

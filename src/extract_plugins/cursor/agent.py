@@ -72,7 +72,7 @@ class CursorExtractor(AgentExtractor):
             
             gs_path = self.config.get('global_storage')
             if gs_path:
-                global_storage = Path(gs_path)
+                global_storage = Path(gs_path) / "state.vscdb"
         
         # Use defaults if not in config
         if not workspace_storage:

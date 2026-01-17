@@ -35,6 +35,7 @@ desktop.ini
 data/source/
 data/runs/
 data/archive/
+data/web/
 
 # Logs
 logs/
@@ -66,7 +67,7 @@ output_*/
 data/
 tmp/
 .cache/
-data/**/db.db.backup.*
+data/**/*.db.backup.*
 data/**/annotations_export.json
 *.db
 *.db-wal
@@ -98,15 +99,21 @@ config/config.local.yaml
 test_config.yaml
 config/*.local.yaml
 config/*.secrets.yaml
+config/backups/
 .env.local
+.env.*
+
+# Packaging
+*.whl
+*.tar.gz
 
 # protected test artifacts
-RESPEC/tests/test.env
-tests/integration
+.RESPEC
+tests/env
 *.key
 *.pem
 
-# Productivity tools
+# Productivity
 command.md
 command.txt
 tasks.md

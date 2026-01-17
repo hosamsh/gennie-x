@@ -161,13 +161,13 @@ const Turns = {
         const groupsHtml = groups.map(group => this._renderGroup(group)).join('');
 
         // Global toggle control (Two circles aligned with the timeline)
-        // No text, positioned at the top left, aligned with group dots
+        // Made more visible with primary color and glow effect
         const toggleHtml = `
             <div class="turn-group flex gap-4 mb-2 relative">
-                <div class="flex flex-col items-center cursor-pointer group p-1 -m-1" onclick="Turns.toggleAllGroups()" title="${this.areAllCollapsed ? 'Expand all' : 'Collapse all'}">
-                    <div class="flex gap-1 items-center">
-                         <div class="w-1.5 h-1.5 rounded-full bg-terminal-gray/50 group-hover:bg-primary transition-all duration-300"></div>
-                         <div class="w-1.5 h-1.5 rounded-full bg-terminal-gray/50 group-hover:bg-primary transition-all duration-300"></div>
+                <div class="flex flex-col items-center cursor-pointer group p-2 -m-2 rounded-lg hover:bg-primary/10 transition-all duration-300" onclick="Turns.toggleAllGroups()" title="${this.areAllCollapsed ? 'Expand all' : 'Collapse all'}">
+                    <div class="flex gap-1.5 items-center">
+                         <div class="w-2.5 h-2.5 rounded-full bg-primary/70 group-hover:bg-primary group-hover:shadow-[0_0_8px_rgba(59,130,246,0.6)] transition-all duration-300"></div>
+                         <div class="w-2.5 h-2.5 rounded-full bg-primary/70 group-hover:bg-primary group-hover:shadow-[0_0_8px_rgba(59,130,246,0.6)] transition-all duration-300"></div>
                     </div>
                 </div>
             </div>
@@ -179,7 +179,8 @@ const Turns = {
         this._applyTurnTextClamps(container);
 
         // If a turn hash is present, scroll to and highlight it
-        this._scrollToHash(container);
+        // Delay to ensure layout is stable after clamps are applied (clamps have a 100ms delay)
+        setTimeout(() => this._scrollToHash(container), 150);
     },
 
     /**
@@ -220,14 +221,14 @@ const Turns = {
 
         return `
         <div class="turn-group flex gap-4 mb-8 relative" id="${group.id}">
-            <!-- Connection Line / Collapse Trigger -->
-            <div class="flex flex-col items-center pt-5 pb-5 cursor-pointer group/line" onclick="Turns.toggleGroup('${group.id}')" title="Collapse/Expand turn group">
-                <div class="w-2 h-2 rounded-full bg-terminal-gray/30 group-hover/line:bg-primary transition-colors"></div>
+            <!-- Connection Line / Collapse Trigger - Made more visible -->
+            <div class="flex flex-col items-center pt-5 pb-5 cursor-pointer group/line px-1 -mx-1 rounded hover:bg-primary/5 transition-all duration-200" onclick="Turns.toggleGroup('${group.id}')" title="Collapse/Expand turn group">
+                <div class="w-3 h-3 rounded-full bg-primary/60 group-hover/line:bg-primary group-hover/line:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-200"></div>
                 ${group.assistantTurns.length > 0 ? `
-                    <div class="w-0.5 flex-grow bg-terminal-gray/10 group-hover/line:bg-primary/50 transition-colors my-1 mb-1 rounded-full"></div>
-                    <div class="w-2 h-2 rounded-full bg-terminal-gray/30 group-hover/line:bg-primary transition-colors"></div>
+                    <div class="w-1 flex-grow bg-primary/30 group-hover/line:bg-primary/70 transition-all duration-200 my-1 mb-1 rounded-full"></div>
+                    <div class="w-3 h-3 rounded-full bg-primary/60 group-hover/line:bg-primary group-hover/line:shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-200"></div>
                 ` : `
-                    <div class="w-0.5 flex-grow bg-terminal-gray/10 group-hover/line:bg-primary/50 transition-colors my-1 mb-1 rounded-full"></div>
+                    <div class="w-1 flex-grow bg-primary/30 group-hover/line:bg-primary/70 transition-all duration-200 my-1 mb-1 rounded-full"></div>
                 `}
             </div>
 
@@ -285,26 +286,31 @@ const Turns = {
         const targetId = window.location.hash.substring(1);
         if (!targetId.startsWith('turn-')) return;
 
+        // Use double requestAnimationFrame to ensure DOM is fully laid out
         requestAnimationFrame(() => {
-            const el = document.getElementById(targetId);
-            if (el) {
-                // 1. Ensure the parent group is expanded
-                const group = el.closest('.turn-group');
-                if (group) {
-                    const content = group.querySelector('.group-content');
-                    if (content && content.classList.contains('hidden')) {
-                        this.toggleGroup(group.id);
+            requestAnimationFrame(() => {
+                const el = document.getElementById(targetId);
+                if (el) {
+                    // 1. Ensure the parent group is expanded
+                    const group = el.closest('.turn-group');
+                    if (group) {
+                        const content = group.querySelector('.group-content');
+                        if (content && content.classList.contains('hidden')) {
+                            this.toggleGroup(group.id);
+                        }
                     }
-                }
 
-                // 2. Ensure the turn text itself is expanded if it was clamped
-                this.expandTurn(targetId);
-                
-                // 3. Scroll into view
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('highlight-turn');
-                setTimeout(() => el.classList.remove('highlight-turn'), 3000);
-            }
+                    // 2. Ensure the turn text itself is expanded if it was clamped
+                    this.expandTurn(targetId);
+                    
+                    // 3. Scroll into view after a brief delay for any expansion animations
+                    setTimeout(() => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.classList.add('highlight-turn');
+                        setTimeout(() => el.classList.remove('highlight-turn'), 3000);
+                    }, 50);
+                }
+            });
         });
     },
 
@@ -314,6 +320,9 @@ const Turns = {
     _applyTurnTextClamps(container) {
         // Check once layout is likely stable.
         const checkClamps = () => {
+            // Skip if container is not visible (scrollHeight will be 0)
+            if (container.offsetParent === null) return;
+            
             const wrappers = container.querySelectorAll('[data-turn-text-wrapper]');
             wrappers.forEach(wrapper => {
                 const content = wrapper.querySelector('[data-turn-text-content]');
@@ -565,14 +574,14 @@ const Turns = {
     _renderCodeEdits(turn) {
         if (!turn.code_edits || turn.code_edits.length === 0) {
             if (turn.lines_added > 0 || turn.lines_removed > 0 || turn.files_edited > 0) {
+                // Simple inline display matching files/tools style
+                const parts = [];
+                if (turn.files_edited > 0) parts.push(`${turn.files_edited} file(s)`);
+                if (turn.lines_added > 0) parts.push(`<span class="text-terminal-green">+${turn.lines_added}</span>`);
+                if (turn.lines_removed > 0) parts.push(`<span class="text-error">-${turn.lines_removed}</span>`);
                 return `
-                    <div class="mt-2 p-2 bg-background-dark rounded text-xs">
-                        <div class="font-medium text-white mb-1 font-mono">📝 Code Changes</div>
-                        <div class="flex gap-3 font-mono">
-                            ${turn.files_edited > 0 ? `<span class="text-terminal-gray">📁 ${turn.files_edited} file(s)</span>` : ''}
-                            ${turn.lines_added > 0 ? `<span class="text-terminal-green">+${turn.lines_added} lines</span>` : ''}
-                            ${turn.lines_removed > 0 ? `<span class="text-error">-${turn.lines_removed} lines</span>` : ''}
-                        </div>
+                    <div class="mt-2 text-xs text-terminal-gray font-mono">
+                        📝 ${parts.join(', ')}
                     </div>
                 `;
             }
@@ -599,30 +608,29 @@ const Turns = {
             }
             
             return `
-                <div class="flex items-center justify-between py-1">
+                <div class="flex items-center justify-between py-0.5">
                     <div class="flex items-center gap-2 truncate">
-                        <span class="text-terminal-gray">📄</span>
-                        <span class="truncate text-white font-mono" title="${Formatters.escapeHtml(edit.file_path)}">${Formatters.escapeHtml(fileName)}</span>
-                        ${lang ? `<span class="text-purple-400 text-xs font-mono">${lang}</span>` : ''}
+                        <span>📄</span>
+                        <span class="truncate" title="${Formatters.escapeHtml(edit.file_path)}">${Formatters.escapeHtml(fileName)}</span>
+                        ${lang ? `<span class="text-purple-400">${lang}</span>` : ''}
                     </div>
-                    <div class="text-xs whitespace-nowrap ml-2 font-mono">${changeText}</div>
+                    <div class="whitespace-nowrap ml-2">${changeText}</div>
                 </div>
             `;
         }).join('');
+
+        // Summary line matching files/tools style
+        const summaryParts = [`${edits.length} file(s)`];
+        if (totalAdded > 0) summaryParts.push(`<span class="text-terminal-green">+${totalAdded}</span>`);
+        if (totalRemoved > 0) summaryParts.push(`<span class="text-error">-${totalRemoved}</span>`);
         
         return `
-            <div class="mt-2 p-2 bg-background-dark rounded text-xs">
-                <div class="flex items-center justify-between cursor-pointer hover:bg-surface-dark px-2 py-1 rounded -mx-2 mb-1" onclick="Turns.toggleCodeEdits('${editsId}')">
-                    <span class="font-medium text-white flex items-center gap-1 font-mono">
-                        <span id="${editsId}-arrow" class="inline-block transition-transform text-terminal-gray" style="font-size: 10px;">▼</span>
-                        <span>📝 Code Changes (${edits.length} file${edits.length !== 1 ? 's' : ''})</span>
-                    </span>
-                    <span class="text-terminal-gray font-mono">
-                        ${totalAdded > 0 ? `<span class="text-terminal-green">+${totalAdded}</span>` : ''}
-                        ${totalRemoved > 0 ? `<span class="text-error ml-1">-${totalRemoved}</span>` : ''}
-                    </span>
+            <div class="mt-2 text-xs">
+                <div class="cursor-pointer hover:bg-surface-dark rounded px-2 py-1 -mx-2 text-terminal-gray font-mono flex items-center gap-1" onclick="Turns.toggleCodeEdits('${editsId}')">
+                    <span id="${editsId}-arrow" class="material-symbols-outlined text-[1rem] transition-transform">chevron_right</span>
+                    <span>📝 ${summaryParts.join(', ')}</span>
                 </div>
-                <div id="${editsId}-content" class="divide-y divide-border-dark mt-1">
+                <div id="${editsId}-content" class="mt-1 ml-6 text-terminal-gray font-mono" style="display: none;">
                     ${fileList}
                 </div>
             </div>
@@ -654,10 +662,10 @@ const Turns = {
         
         if (content.style.display === 'none') {
             content.style.display = '';
-            arrow.style.transform = 'rotate(0deg)'; // Arrow points down when expanded (from initial right)
+            arrow.style.transform = 'rotate(90deg)';
         } else {
             content.style.display = 'none';
-            arrow.style.transform = 'rotate(-90deg)'; // Arrow points right when collapsed
+            arrow.style.transform = 'rotate(0deg)';
         }
     },
 

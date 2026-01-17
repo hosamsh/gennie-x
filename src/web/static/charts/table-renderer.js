@@ -235,20 +235,3 @@ export function toggleTableSort(tableId) {
     return true;
 }
 
-/**
- * Get current sort state for a table
- */
-export function getTableSortState(tableId) {
-    return tableSortState.get(tableId) || null;
-}
-
-/**
- * Reset sort state (useful when dashboard reloads)
- */
-export function resetTableSortState(tableId) {
-    if (tableId) {
-        tableSortState.delete(tableId);
-    } else {
-        tableSortState.clear();
-    }
-}

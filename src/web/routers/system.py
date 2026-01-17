@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from src.shared.database import db_schema
+from src.shared.io.run_dir import get_db_path
 from src.shared.logging.logger import get_logger
 from src.web.data_providers.system_provider import SystemDataProvider
 from src.web.shared_state import get_shared_run_dir
@@ -31,7 +32,7 @@ async def get_system_stats():
     """Get basic system statistics."""
     try:
         run_dir = get_shared_run_dir()
-        db_path = Path(run_dir) / "db.db"
+        db_path = get_db_path(Path(run_dir))
         if not db_path.exists():
             raise HTTPException(status_code=404, detail="Database not available")
         

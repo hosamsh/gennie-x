@@ -1,0 +1,19 @@
+# GPU dependencies for faster embeddings
+#
+# NOTE:
+# 1) Choose the correct CUDA wheel index for your system from:
+#    https://pytorch.org/get-started/locally/
+# 2) Uncomment ONE of the index URLs below (example versions shown).
+#
+# Example for CUDA 12.1:
+# --index-url https://download.pytorch.org/whl/cu121
+#
+# Example for CUDA 11.8:
+# --index-url https://download.pytorch.org/whl/cu118
+#
+# Install GPU-enabled PyTorch, then install the rest of the dependencies.
+# If you already installed PyTorch with CUDA, you can comment out the torch line.
+
+torch>=2.2.0
+
+-r requirements.txt

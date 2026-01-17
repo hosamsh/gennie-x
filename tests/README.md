@@ -2,31 +2,6 @@
 
 This directory contains all tests for the gennie-x project.
 
-## Directory Structure
-
-```
-tests/
-├── unit/                    # Fast, isolated unit tests
-│   ├── conftest.py          # Shared fixtures (synthetic workspaces, CLI runner)
-│   ├── test_cli_extract.py  # Extraction CLI tests
-│   ├── test_cli_list.py     # List workspaces CLI tests
-│   ├── test_cli_search.py   # Search/reindex CLI tests
-│   ├── test_config_isolation.py  # Config system tests
-│   ├── test_contracts.py    # Contract/boundary tests
-│   ├── test_data_artifacts.py    # Database schema & data tests
-│   └── test_web_api.py      # Web API endpoint tests
-│
-├── integration/             # Slower tests using real data
-│   ├── conftest.py          # Integration test fixtures
-│   ├── test_contracts_integration.py  # Integration contract tests
-│   ├── test_extract.py      # Real workspace extraction
-│   ├── test_list.py         # Real workspace listing
-│   ├── test_refresh.py      # Force refresh tests
-│   └── test_web_api.py      # Web API integration tests
-│
-└── README.md                # This file
-```
-
 ## Running Tests
 
 This project uses **uv** for dependency management and running commands.
@@ -57,17 +32,6 @@ uv run pytest tests/integration/ -v
 uv run pytest tests/ -v
 ```
 
-## Common Options
-
-| Option | Description |
-|--------|-------------|
-| `-v` | Verbose output (show test names) |
-| `-vv` | More verbose (show assertion details) |
-| `-s` | Show print statements |
-| `--tb=short` | Shorter tracebacks |
-| `--tb=no` | No tracebacks (just pass/fail) |
-| `-x` | Stop on first failure |
-| `-k "pattern"` | Run tests matching pattern |
 
 ## Examples
 
@@ -141,42 +105,10 @@ uv run pytest tests/ -m integration -v
 uv run pytest tests/ -m "not integration" -v
 ```
 
-## Test Naming Conventions
-
-Tests follow a naming pattern that maps to the test plan:
-
-| Prefix | Category |
-|--------|----------|
-| `T0-*` | Tier 0: Test harness/fixtures |
-| `T1-*` | Tier 1: Feature tests (CLI, API) |
-| `T2-*` | Tier 2: Contract/boundary tests |
-| `T3-*` | Tier 3: Data artifact tests |
-
-## Fixtures
-
-### Unit Test Fixtures (`tests/unit/conftest.py`)
-
-| Fixture | Description |
-|---------|-------------|
-| `run_dir` | Temporary directory for test database |
-| `copilot_workspace` | Synthetic Copilot workspace with chat sessions |
-| `copilot_workspace_with_edits` | Workspace with code edits (for metrics tests) |
-| `copilot_workspace_with_long_text` | Workspace with long text (for shrinking tests) |
-| `cursor_workspace` | Synthetic Cursor workspace |
-| `make_test_config` | Factory to create test config files |
-| `cli_runner` | Function to run CLI commands |
-| `web_client` | FastAPI TestClient for API tests |
-
-### Integration Test Fixtures (`tests/integration/conftest.py`)
-
-| Fixture | Description |
-|---------|-------------|
-| `run_dir` | Temporary directory for test runs |
-| `copilot_workspace` | Same as unit test fixture |
 
 ## Troubleshooting
 
-### Tests can't find modules
+### Can't find modules
 
 Make sure you're running from the project root:
 
@@ -202,7 +134,6 @@ uv add fastapi httpx
 Unit tests should complete in under a minute. If slow:
 - Use `-x` to stop on first failure
 - Run specific test files instead of all tests
-- Check if integration tests are accidentally running
 
 ## Writing New Tests
 

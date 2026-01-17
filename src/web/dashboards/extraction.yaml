@@ -71,6 +71,17 @@ metrics:
     format: percent
     icon: robot
 
+  - id: agentic_coding_time_hours
+    title: Agentic Time
+    description: Total hours agents spent in this workspace
+    data_source:
+      type: function
+      function: get_agentic_coding_time_stats
+      field: total_hours
+    format: number
+    icon: timer
+    color: orange
+
 # Charts section
 charts:
   - id: model_usage
@@ -136,6 +147,7 @@ charts:
     value_field: change_count
     options:
       max_items: 10
+      #integer_scale: true
 
   # Tool Usage (horizontal bar chart)
   - id: tools
@@ -153,7 +165,7 @@ charts:
 
   # Word Cloud - Most Used Terms
   - id: word_cloud_terms
-    title: Most Used Words
+    title: Workspace Word Cloud
     description: Word frequency from cleaned conversation text (workspace-scoped)
     chart_type: word_cloud
     width: full

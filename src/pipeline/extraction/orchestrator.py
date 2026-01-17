@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from src.shared.database.db_schema import init_shared_db
+from src.shared.io.run_dir import get_db_path
 from src.shared.logging.logger import get_logger
 from src.shared.models.workspace import WorkspaceExtractionResult
 from .extractor import extract_workspace as _extract_workspace_data
@@ -39,7 +40,7 @@ def init_run_directory(run_dir: Optional[str] = None) -> Path:
     # Create the run directory
     path.mkdir(parents=True, exist_ok=True)
 
-    db_path = path / "db.db"
+    db_path = get_db_path(path)
     if not db_path.exists():
         conn = init_shared_db(db_path, verbose=False)
         conn.close()
@@ -154,7 +155,7 @@ async def extract_workspaces(
     stats: Dict[str, WorkspaceExtractionResult] = {}
     successful = skipped = failed = 0
     pipeline_start = datetime.now()
-    db_path = run_path / "db.db"
+    db_path = get_db_path(run_path)
 
     for i, workspace_id in enumerate(workspace_ids, 1):
             logger.banner(f"Starting to process workspace {i}/{len(workspace_ids)}: {workspace_id}")

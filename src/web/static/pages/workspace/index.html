@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workspace - CHAT_EXPLORER</title>
+    <title>Workspace - GENNIE_EXPLORER</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
@@ -40,7 +40,7 @@
     <aside class="nav-sidebar">
         <div class="nav-sidebar-resizer" id="sidebar-resizer"></div>
         <div class="nav-header">
-            <h1 class="nav-title">CHAT_EXPLORER</h1>
+            <h1 class="nav-title">GENNIE_EXPLORER</h1>
             <p class="nav-version" id="nav-version">loading...</p>
         </div>
         
@@ -192,16 +192,10 @@
             <!-- Dashboard View -->
             <div id="dashboard-view">
                 <div class="page-heading mb-6">
-                    <h2 class="page-title">WORKSPACE_DASHBOARD</h2>
+                    <h2 class="page-title">WORKSPACE_STATS</h2>
                 </div>
                 
-                <!-- Dashboard Header -->
-                <div class="mb-6">
-                    <div class="flex items-center gap-2 py-3">
-                        <span class="material-symbols-outlined text-base text-primary">download</span>
-                        <span class="text-primary font-semibold">EXTRACTION</span>
-                    </div>
-                </div>
+               
                 
                 <!-- ==================== EXTRACTION TAB ==================== -->
                 <div id="extraction-tab-content">
@@ -279,7 +273,10 @@
                         <div class="sticky top-0 z-10 bg-surface-dark p-4 border-b border-border-dark rounded-t-lg">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="flex-1">
-                                    <h3 id="current-session-title" class="font-semibold text-white font-mono">Session</h3>
+                                    <div class="flex items-center gap-2">
+                                        <span id="session-agent-icon"></span>
+                                        <h3 id="current-session-title" class="font-semibold text-white font-mono">Session</h3>
+                                    </div>
                                     <p id="current-session-subtitle" class="text-xs text-terminal-gray font-mono"></p>
                                 </div>
                                 <div id="session-stats" class="flex flex-wrap gap-4 text-sm text-terminal-gray bg-background-dark rounded p-3 font-mono"></div>
@@ -295,6 +292,12 @@
                                         ✕
                                     </button>
                                 </div>
+                                <button onclick="WorkspacePage.exportSessionMarkdown()" 
+                                        class="btn btn-secondary text-xs py-1.5 px-3 flex items-center gap-2"
+                                        title="Export session as Markdown">
+                                    <span class="material-symbols-outlined text-sm">download</span>
+                                    EXPORT MD
+                                </button>
                             </div>
                         </div>
                         <div id="turns-container" class="p-4 space-y-4"></div>
@@ -358,8 +361,9 @@
 
     <!-- Marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-    <!-- Declarative Dashboard Renderer (ES6 Module) -->
-    <script type="module" src="/static/js/dashboard-renderer.js?v=7"></script>
+    
+    <!-- Declarative Dashboard Renderer (ES6 Module) - provides full chart support if available -->
+    <script type="module" src="/static/js/dashboard-renderer.js?v=1"></script>
     
     <!-- Modular JavaScript Components -->
     <script src="/static/js/formatters.js?v=1"></script>

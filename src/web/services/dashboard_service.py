@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from src.shared.database import db_schema
+from src.shared.io.run_dir import get_db_path
 from src.shared.logging.logger import get_logger
 from src.web.data_providers.extraction_provider import ExtractionDataProvider
 from src.web.data_providers.system_provider import SystemDataProvider
@@ -61,11 +62,13 @@ def get_dashboard_config_payload(dashboard_id: str) -> dict:
 
 
 def get_dashboard_data_payload(workspace_id: str, dashboard_id: str) -> dict:
+    from src.web.shared_state import resolve_workspace_folder
+    
     start_time = time.perf_counter()
     logger.info(f"[PERF] get_dashboard_data_payload | START workspace={workspace_id[:8]} dashboard={dashboard_id}")
     
     run_dir = get_shared_run_dir()
-    db_path = Path(run_dir) / "db.db"
+    db_path = get_db_path(Path(run_dir))
     if not db_path.exists():
         raise HTTPException(status_code=404, detail=f"Database not found: {db_path}")
     
@@ -73,6 +76,10 @@ def get_dashboard_data_payload(workspace_id: str, dashboard_id: str) -> dict:
     logger.info(f"[PERF] get_dashboard_data_payload | get_sqlite_connection: {(time.perf_counter()-start_time)*1000:.1f}ms")
 
     try:
+        # Resolve workspace_folder for cross-agent consolidation
+        workspace_folder = resolve_workspace_folder(workspace_id)
+        logger.info(f"[PERF] get_dashboard_data_payload | resolved workspace_folder: {workspace_folder}")
+        
         loader = get_dashboard_loader()
         config = loader.load_dashboard(dashboard_id)
         if not config:
@@ -82,7 +89,8 @@ def get_dashboard_data_payload(workspace_id: str, dashboard_id: str) -> dict:
         if not provider_cls:
             raise HTTPException(status_code=400, detail=f"Unsupported workspace dashboard: {dashboard_id}")
 
-        provider = provider_cls(conn, workspace_id)
+        # Pass workspace_folder to provider for cross-agent consolidated queries
+        provider = provider_cls(conn, workspace_id, workspace_folder=workspace_folder)
         logger.info(
             f"[PERF] get_dashboard_data_payload | create_provider: {(time.perf_counter()-start_time)*1000:.1f}ms"
         )
@@ -171,7 +179,7 @@ def get_system_dashboard_data_payload(dashboard_id: str) -> dict:
     logger.info(f"[PERF] get_system_dashboard_data_payload | START dashboard={dashboard_id}")
     
     run_dir = get_shared_run_dir()
-    db_path = Path(run_dir) / "db.db"
+    db_path = get_db_path(Path(run_dir))
     if not db_path.exists():
         raise HTTPException(status_code=404, detail=f"Database not found: {db_path}")
     

@@ -57,6 +57,22 @@ def pytest_configure(config):
     )
 
 
+def get_test_db_path(run_dir: Path) -> Path:
+    """Get the database path for a run directory in tests.
+    
+    Uses the centralized run_dir module to ensure tests use the
+    same database filename as production code.
+    
+    Args:
+        run_dir: Path to the run directory
+        
+    Returns:
+        Path to the database file
+    """
+    from src.shared.io.run_dir import get_db_path
+    return get_db_path(run_dir)
+
+
 @pytest.fixture
 def run_dir(tmp_path):
     """T0-1: Provide isolated run directory for each test.

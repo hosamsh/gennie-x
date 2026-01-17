@@ -19,7 +19,7 @@ def get_workspace_storage() -> Path:
     """Get VS Code workspace storage path for current platform."""
     system = platform.system()
     if system == "Windows":
-        return Path(os.environ["APPDATA"]) / "Code/User/workspaceStorage"
+        return Path(os.environ.get("APPDATA", "")) / "Code/User/workspaceStorage"
     elif system == "Darwin":
         return Path.home() / "Library/Application Support/Code/User/workspaceStorage"
     else:
