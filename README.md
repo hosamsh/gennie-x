@@ -124,7 +124,7 @@ See [Agent Extractor Interface Docs](src/extract_plugins/readme.md)
 
 
 ## 🧪 Running Tests
-see [Tests](tests/readme.md)
+see [tests/readme.md](https://github.com/hosamsh/gennie-x/blob/89e6da3547689b095ad4b4cb3cadf6541cc550de/tests/README.md)
 
 
 > **Note**: Do not use `python -m pytest` or activate a `.venv` manually - use `uv run pytest` instead.
