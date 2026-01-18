@@ -110,6 +110,7 @@ config/backups/
 # protected test artifacts
 .RESPEC
 tests/env
+tests/integration
 *.key
 *.pem
 
