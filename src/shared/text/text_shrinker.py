@@ -105,7 +105,7 @@ STOPWORDS = {
     "an", "a", "it", "there", "here", "than", "then", "also", "just", "into", "about", "over", "under",
     "please", "thanks",
     # Additional common conversational fillers from extraction provider
-    "ok", "okay", "yes", "yeah", "sure", "well", "now", "let", "lets", "us"
+    "ok", "okay", "yes", "yeah", "sure", "well", "now", "let", "lets"
 }
 
 

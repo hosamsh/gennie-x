@@ -6,13 +6,10 @@ relying on hardcoded IDs, making it portable across different environments.
 
 import pytest
 import re
-from pathlib import Path
 from tests.integration.conftest import (
     run_cli_command,
     get_project_root,
     delete_db,
-    query_db,
-    query_db_single,
     count_table_rows,
 )
 from src.shared.io.run_dir import get_db_path

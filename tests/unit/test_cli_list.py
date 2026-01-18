@@ -8,7 +8,6 @@ Tests:
 Note: Tests use test_config.yaml which points to isolated storage paths.
 """
 import json
-import pytest
 
 
 def test_list_workspaces_table_output(cli_runner, make_test_config, copilot_workspace):

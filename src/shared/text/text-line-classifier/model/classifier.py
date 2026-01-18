@@ -10,7 +10,7 @@ from typing import List, Optional
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 
-from .features import extract_features, features_to_vector, extract_features_batch
+from .features import extract_features_batch
 
 
 class LineClassifier:

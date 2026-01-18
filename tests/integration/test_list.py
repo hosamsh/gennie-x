@@ -4,7 +4,6 @@ Note: This test dynamically discovers available workspaces rather than
 relying on hardcoded IDs, making it portable across different environments.
 """
 
-import pytest
 import re
 from tests.integration.conftest import run_cli_command
 
@@ -38,11 +37,11 @@ def test_list_workspaces():
     workspace_ids = re.findall(r'\b[a-f0-9]{32}\b', output)
     unique_ids = set(workspace_ids)
     
-    assert len(unique_ids) >= 1, f"Expected at least 1 workspace, found none in output"
+    assert len(unique_ids) >= 1, "Expected at least 1 workspace, found none in output"
     print(f"✓ Found {len(unique_ids)} unique workspaces: {list(unique_ids)[:5]}")
     
     # Note: We no longer check for specific workspace IDs.
     # Integration tests should not depend on environment-specific data.
     # The assertion above verifies workspaces are discovered correctly.
     
-    print(f"✓ List workspaces test passed")
+    print("✓ List workspaces test passed")

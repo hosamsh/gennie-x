@@ -5,7 +5,7 @@ All configuration dataclasses are defined here for consistency.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 
 from src.shared.models.dataclass_mixin import DataclassIO
 

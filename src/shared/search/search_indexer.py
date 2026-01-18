@@ -58,7 +58,7 @@ def generate_embeddings(
             count = cursor.fetchone()[0]
             logger.progress(f"[EMBED] Generating embeddings for turns {min_turn_id}-{max_turn_id} ({count} turns)...")
         else:
-            logger.progress(f"[EMBED] Generating embeddings for all turns...")
+            logger.progress("[EMBED] Generating embeddings for all turns...")
     
     try:
         stats = backfill_turn_embeddings(

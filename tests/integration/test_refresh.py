@@ -5,7 +5,6 @@ from tests.integration.conftest import (
     run_cli_command,
     get_project_root,
     query_db,
-    count_table_rows,
 )
 
 
@@ -130,6 +129,6 @@ def test_refresh_workspace_force():
     assert len(overlap) == 0, (
         f"Original turn IDs should be deleted but found overlap: {overlap}"
     )
-    print(f"✓ Original turn IDs are no longer in database (replaced successfully)")
+    print("✓ Original turn IDs are no longer in database (replaced successfully)")
     
     print("\n✅ All refresh test criteria passed!")

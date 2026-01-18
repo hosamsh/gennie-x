@@ -13,7 +13,6 @@ import subprocess
 import sys
 import yaml
 from pathlib import Path
-from typing import Any, Dict, List
 from datetime import datetime, timezone
 
 # Add project root to sys.path for proper imports
@@ -516,7 +515,6 @@ def make_test_config(tmp_path):
         Returns:
             Path to created config file
         """
-        import yaml
         
         config = {
             "extract": {

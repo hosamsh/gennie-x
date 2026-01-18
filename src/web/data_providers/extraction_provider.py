@@ -13,7 +13,6 @@ import json
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from src.web.services.extraction_service import generate_word_lists
 
 
 def _normalize_folder(folder: str) -> str:
@@ -489,41 +488,3 @@ class ExtractionDataProvider:
         cap = int(median_ms * 10.0)  # 10x median multiplier
         cap = max(60_000, min(3_600_000, cap))  # floor 1 min, ceiling 1 hour
         return cap
-
-         # Determine if thinking_text column exists
-        has_thinking = False
-        try:
-            self.conn.execute("SELECT thinking_text FROM turns LIMIT 1")
-            has_thinking = True
-        except sqlite3.OperationalError:
-            pass
-
-        cols = "role, COALESCE(model_id, '') as model_id, text"
-        if has_thinking:
-            cols += ", thinking_text"
-        else:
-            cols += ", NULL as thinking_text"
-
-        sql = f"SELECT {cols} FROM turns WHERE LOWER(REPLACE(workspace_folder, '\\', '/')) = ? AND ((text IS NOT NULL AND text != '') OR (thinking_text IS NOT NULL AND thinking_text != ''))"  # nosec B608
-
-        word_lists = generate_word_lists(
-            self.conn,
-            sql,
-            params=(folder_filter,),
-            top_model_ids=top_model_ids,
-            min_word_length=min_word_length,
-            max_words_per_group=max_words_per_group,
-            exclude_patterns=[p.pattern for p in compiled_patterns] if compiled_patterns else None,
-        )
-
-        groups: List[Dict[str, str]] = [
-            {"id": "user", "label": "User"},
-            {"id": "assistant_all", "label": "Assistant (all models)"},
-        ]
-
-        for model_id in top_model_ids:
-            # Format model name nicely
-            label = model_id.replace("gpt-4o-", "GPT-4o ").replace("claude-", "Claude ").replace("-", " ").title()
-            groups.append({"id": f"assistant_model::{model_id}", "label": f"Assistant: {label}"})
-
-        return {"groups": groups, "default_group_id": "user", "word_lists": word_lists}

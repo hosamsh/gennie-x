@@ -6,11 +6,8 @@ Tests:
 - T1-6: Extract is idempotent without force refresh
 - T1-7: Extract force refresh replaces data
 """
-import json
 import sqlite3
-from pathlib import Path
 
-import pytest
 
 from conftest import get_test_db_path
 

@@ -4,7 +4,6 @@ System Data Provider - Provides system-wide statistics across all workspaces.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import time
 import re

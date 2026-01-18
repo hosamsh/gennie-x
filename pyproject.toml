@@ -80,12 +80,23 @@ markers = [
 # PL: Pylint (refactoring suggestions)
 select = ["F", "E", "B", "PL"]
 ignore = [
-    "E501", # Line too long (style)
-    "PLR",  # Pylint Refactor (often too pedantic)
+    "E501",     # Line too long (style)
+    "E701",     # Multiple statements on one line
+    "E722",     # Bare except (sometimes needed for catch-all)
+    "E402",     # Module level import not at top (test files)
+    "PLR",      # Pylint Refactor (often too pedantic)
     "PLC0415",
-    "PLW0603",
+    "PLW0603",  # Global without assignment
+    "PLW0602",  # Global without assignment
+    "PLW2901",  # Loop variable overwritten (common pattern)
+    "PLW1510",  # subprocess.run without check (tests)
     "B905",
     "E741",
+    "B904",     # raise from in except (verbose)
+    "B007",     # Unused loop variable (use _ prefix if needed)
+    "B023",     # Function definition does not bind loop variable
+    "E731",     # Lambda assignment (sometimes cleaner)
+    "F841",     # Unused variable (too noisy during dev)
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

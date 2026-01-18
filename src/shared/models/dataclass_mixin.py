@@ -24,7 +24,7 @@ class DataclassIO:
         else:
             data = dict(getattr(self, "__dict__", {}))
 
-        if hasattr(self, "extra") and isinstance(getattr(self, "extra"), dict):
+        if hasattr(self, "extra") and isinstance(self.extra, dict):
             extra = data.pop("extra", {}) or {}
             data.update(extra)
         return data

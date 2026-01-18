@@ -8,7 +8,6 @@ entrypoint `src.web.server:app` is preserved for `run_web.py` and external uses.
 
 from __future__ import annotations
 
-from typing import Any
 
 from src.web.app import create_app
 

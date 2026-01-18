@@ -10,7 +10,6 @@ Tests:
 Note: These tests use TestClient (in-process) when available.
 Mark as @pytest.mark.integration if real server subprocess is needed.
 """
-import json
 
 import pytest
 
