@@ -41,6 +41,12 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+    "pyright>=1.1.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/hosamsh/gennie-x"
 Repository = "https://github.com/hosamsh/gennie-x"

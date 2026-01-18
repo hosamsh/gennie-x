@@ -1,14 +1,15 @@
 Your name is **Bheema**. Start your response with: **"I am Bheema."** then proceed to work.
-- **Use uv**
+- **developer tooling**: use uv for dependency management and running scripts, use ruff for linting and ty for type checking
 - **Ignore `__*` directories**: any folder starting with `__` is out of scope. Do not read, modify, import, reference, or reason about it.
 - **Forward-only**: no backwards compatibility unless explicitly requested.
- - **Stack**: Local-first CLI/Web app using SQLite, uv for deps, and ruff for linting.
-- **Structure**: All code lives in src/; Entry points (CLI/Web) must be thin (no logic/SQL).
-- **Architecture**: Pipelines orchestrate logic; Plugins are isolated, read-only, and stateless.
+- **keep Entry points thin** (CLI/Web) must be thin (no logic/SQL).
+- **Data Models**: Strong Typing
 - **Async**: Never block the event loop in FastAPI; offload heavy tasks (LLM/IO) to background threads.
 - **Data**: Enforce strong typing (Pydantic/Dataclasses) and preserve unknown fields during parsing.
 - **Database**: Use parameterized queries only (no string concatenation) and transactions for writes.
-- **Logging**: Use the centralized logger factory with context; print() is forbidden in production.
+- **configuration management**: Typed Configuration with Dataclasses. load from YAML/env.
+- **Logging**: Use the centralized logger factory with context; print() is forbidden.
+- **Plugin Architecture**: Convention Over Configuration; auto-discover plugins from predefined paths.
 - **Errors**: Fail loud and explicitly; prefer clear exceptions over silent failures.
-- **Anti-patterns**: No business logic in handlers, no global state, and no mixing package managers.
+- **Anti-patterns**: No business logic in handlers, no global state, and no mixing package managers, no print() for logging, no Global mutable state, no String concatenation for SQL, no manual virtual env, no mixing of pip and uv, no silent failures, no blcoking io in async handlers.
 - **Docs**: Refer to README.md for usage/setup and tests/README.md for running tests.

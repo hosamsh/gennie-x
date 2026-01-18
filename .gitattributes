@@ -1,0 +1,27 @@
+# Enforce consistent line endings
+# Default: let Git handle text files and normalize line endings
+* text=auto
+
+# Force LF for common text file types to avoid CRLF warnings on Windows
+*.py text eol=lf
+*.md text eol=lf
+*.rst text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sh text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.exe binary
+*.dll binary
+
+# Prevent accidentally normalizing these
+*.lock binary
