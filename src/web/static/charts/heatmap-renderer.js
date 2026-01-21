@@ -35,6 +35,7 @@ export function buildCategoricalXHeader(xLabels) {
 
 /**
  * Build heatmap x-axis header HTML (for date-based axes)
+ * Labels are positioned based on actual calendar time, not column indices
  */
 export function buildHeatmapXHeader(xLabels, isDateAxis = true) {
     const numCols = xLabels.length;
@@ -47,59 +48,59 @@ export function buildHeatmapXHeader(xLabels, isDateAxis = true) {
 
     const toDate = s => new Date(s + 'T00:00:00Z');
     const dates = xLabels.map(toDate);
-    const first = dates[0];
-    const last = dates[dates.length - 1];
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
-    const spanDays = Math.max(1, Math.round((last - first) / MS_PER_DAY));
-
-    let unit;
-    if (spanDays <= 14) unit = 'day';
-    else if (spanDays <= 90) unit = 'week';
-    else if (spanDays <= 720) unit = 'month';
-    else unit = 'year';
-
-    const labelsCount = Math.min(8, Math.max(3, Math.round(Math.sqrt(numCols))));
-    const indices = new Set();
-    if (labelsCount <= 1) indices.add(0);
-    else {
-        const step = (numCols - 1) / (labelsCount - 1);
-        for (let i = 0; i < labelsCount; i++) {
-            indices.add(Math.round(i * step));
-        }
+    const firstTime = dates[0].getTime();
+    const lastTime = dates[dates.length - 1].getTime();
+    const totalSpan = lastTime - firstTime;
+    
+    if (totalSpan <= 0) {
+        // Single date or invalid range
+        const d = dates[0];
+        const label = d.toLocaleString('en', { month: 'short', timeZone: 'UTC' }) + " '" + String(d.getUTCFullYear()).slice(-2);
+        return `<div class="flex-1 text-[9px] text-terminal-gray font-mono text-left">${escapeHtml(label)}</div>`;
     }
-    indices.add(0);
-    indices.add(numCols - 1);
 
-    const chosen = Array.from(indices).sort((a, b) => a - b);
-
-    return xLabels.map((x, idx) => {
-        let label = '';
-        if (chosen.includes(idx)) {
-            const d = dates[idx];
-            if (unit === 'month') {
-                label = d.toLocaleString('en', { month: 'short' }) + " '" + String(d.getFullYear()).slice(-2);
-            } else if (unit === 'year') {
-                label = String(d.getFullYear());
-            } else {
-                const monthName = d.toLocaleString('en', { month: 'short' });
-                const day = String(d.getDate()).padStart(2, '0');
-                const yearShort = String(d.getFullYear()).slice(-2);
-                label = `${monthName} ${day} '${yearShort}`;
-            }
+    // Generate month boundary labels with their proportional positions
+    const monthLabels = [];
+    const seenMonths = new Set();
+    
+    // Find all month boundaries within the date range
+    let d = new Date(dates[0]);
+    d.setUTCDate(1); // Start of first month
+    
+    while (d.getTime() <= lastTime + 31 * 24 * 60 * 60 * 1000) {
+        const monthKey = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        if (!seenMonths.has(monthKey)) {
+            seenMonths.add(monthKey);
+            const monthTime = d.getTime();
+            // Calculate position as percentage of total span
+            let position = (monthTime - firstTime) / totalSpan;
+            // Clamp to [0, 1]
+            position = Math.max(0, Math.min(1, position));
+            
+            const label = d.toLocaleString('en', { month: 'short', timeZone: 'UTC' }) + " '" + String(d.getUTCFullYear()).slice(-2);
+            monthLabels.push({ position, label });
         }
+        // Move to next month
+        d.setUTCMonth(d.getUTCMonth() + 1);
+    }
 
-        let alignClass = 'text-center';
-        if (idx === 0) alignClass = 'text-left';
-        else if (idx === xLabels.length - 1) alignClass = 'text-right pr-[2px]';
+    // Build HTML with absolute positioning for labels
+    // Each column is a flex-1 div, labels are absolutely positioned overlays
+    const colDivs = xLabels.map((x, idx) => {
+        return `<div class="flex-1" style="min-width: 0;" title="${escapeHtml(x)}"></div>`;
+    }).join('');
 
-        return `
-        <div class="flex-1 text-[9px] text-terminal-gray font-mono whitespace-nowrap overflow-visible ${alignClass}" 
-             style="min-width: 0; position: relative;" 
-             title="${escapeHtml(x)}">
-            ${escapeHtml(label)}
+    const labelDivs = monthLabels.map(({ position, label }) => {
+        const leftPct = (position * 100).toFixed(2);
+        return `<div class="absolute text-[9px] text-terminal-gray font-mono whitespace-nowrap" style="left: ${leftPct}%; transform: translateX(-2px);">${escapeHtml(label)}</div>`;
+    }).join('');
+
+    return `
+        <div class="relative w-full" style="height: 14px;">
+            <div class="flex w-full">${colDivs}</div>
+            ${labelDivs}
         </div>
     `;
-    }).join('');
 }
 
 /**
@@ -134,15 +135,18 @@ export function renderHeatmap(chartConfig, chartData, dashboardId) {
     
     // Check if all x values are numeric (e.g., hours 0-23)
     const xAllNumeric = xLabels.every(l => /^\d+$/.test(l));
+    const isDateAxis = xLabels.length > 0 && xLabels.every(l => /^\d{4}-\d{1,2}-\d{1,2}$/.test(l));
+    
     if (xAllNumeric) {
         // Sort numerically
         xLabels.sort((a, b) => Number(a) - Number(b));
+    } else if (isDateAxis) {
+        // Sort dates chronologically (handles both 2025-6-01 and 2025-06-01 formats)
+        xLabels.sort((a, b) => new Date(a + 'T00:00:00Z') - new Date(b + 'T00:00:00Z'));
     } else {
-        // Alphabetical sort for non-numeric
+        // Alphabetical sort for non-numeric, non-date
         xLabels.sort();
     }
-
-    const isDateAxis = xLabels.length > 0 && xLabels.every(l => /^\d{4}-\d{1,2}-\d{1,2}$/.test(l));
     
     // Support x_min_span_days option for minimum date range display
     // This ensures at least N days are shown, padding equally before and after the data

@@ -11,6 +11,16 @@
 
 **Gennie‑X** extracts and indexes conversations from multiple AI coding assistants into a single, searchable local database. Use it to analyze agent interactions, run semantic search, and generate usage reports. Currently supported sources: GitHub Copilot, Cursor, and Claude Code.
 
+<table>
+  <tr>
+    <td width="30%" valign="top" rowspan="2"><img src="src/web/static/screenshots/gennie-x-sys-overview-screen.jpg" alt="Mission Control" /></td>
+    <td width="70%" valign="top"><img src="src/web/static/screenshots/gennie-x-chat-screen.jpg" alt="Conversation Explorer" /></td>
+  </tr>
+  <tr>
+    <td width="70%" valign="top"><img src="src/web/static/screenshots/gennie-x-search-screen.jpg" alt="Search Interface" /></td>
+  </tr>
+</table>
+
 ### ✨ Features
 
 - **Multi-Agent Support**: Extract conversations from GitHub Copilot, Cursor, and Claude Code
@@ -19,7 +29,6 @@
 - **Semantic Search**: Search through your conversation history with AI-powered semantic search (Sentence Transformers embeddings + SQLite FTS5 keyword search)
 - **Code Metrics Extraction**: Extracts code metrics (via `lizard` and related tooling) to summarize complexity and size across extracted code artifacts
 - **Plugins**: extensible to support new AI coding agents
-
 
 ## 🚀 Quick Start
 

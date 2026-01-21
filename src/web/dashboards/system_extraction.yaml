@@ -161,32 +161,6 @@ charts:
       function: get_session_timeline
 
 
-  # Agentic coding time by agent (Copilot vs Cursor vs Claude...)
-  - id: agentic_coding_time_per_agent
-    title: Coding Time by Agent
-    description: Total time agents spent handling user requests (hours)
-    chart_type: pie
-    width: half
-    data_source:
-      type: function
-      function: get_agentic_coding_time_per_agent
-    options:
-      max_items: 10
-      show_percentages: trues
-
-  # Agentic coding time by model (response_time_ms aggregated)
-  - id: agentic_coding_time_per_model
-    title: Coding Time by Model
-    description: Total time a particular coding model spent handling user requests (hours)
-    chart_type: pie
-    width: half
-    data_source:
-      type: function
-      function: get_agentic_coding_time_per_model
-    options:
-      max_items: 10
-      show_percentages: true
-
   # Code velocity timeline (net code growth per day)
   - id: code_velocity_timeline
     title: Code Velocity Timeline
