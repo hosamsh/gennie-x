@@ -57,6 +57,12 @@ const SearchPage = {
         this.unavailableEl = document.getElementById('search-unavailable');
         this.runBtn = document.getElementById('search-run-btn');
         this.resetBtn = document.getElementById('search-reset-btn');
+        
+        // Timeline visualization elements
+        this.timelineContainer = document.getElementById('search-timeline-container');
+        this.timelineEl = document.getElementById('search-timeline');
+        this.timelineRange = document.getElementById('timeline-range');
+        this.timelineSessionsCount = document.getElementById('timeline-sessions-count');
     },
 
     startLoadingHint() {
@@ -177,6 +183,7 @@ const SearchPage = {
         if (this.resultsBar) this.resultsBar.classList.add('hidden');
 
         this.resultsEl.innerHTML = '';
+        this.hideTimeline();
         this.showLoading(false);
         this.showEmptyState(false);
         this.updateSummary(0, 0);
@@ -297,6 +304,7 @@ const SearchPage = {
         this.state.query = '';
         this.clearButton.classList.add('hidden');
         this.resultsEl.innerHTML = '';
+        this.hideTimeline();
         this.showEmptyState(true);
         this.updateSummary(0, 0);
         this.pageIndicator.textContent = '1';
@@ -373,7 +381,7 @@ const SearchPage = {
             }
 
             this.showLoading(false);
-            this.renderResults(payload.results || [], payload.total_count || 0);
+            this.renderResults(payload);
             this.statusLabel.textContent = 'Ready';
         } catch (error) {
             this.showLoading(false);
@@ -382,12 +390,19 @@ const SearchPage = {
         }
     },
 
-    renderResults(results, totalCount) {
+    renderResults(payload) {
+        const results = payload.results || [];
+        const totalCount = payload.total_count || 0;
+        const timeline = payload.timeline || null;
+        const page = payload.page || this.state.page;
+        const pageSize = payload.page_size || this.state.pageSize;
+        
         this.resultsEl.innerHTML = '';
 
         if (!results || results.length === 0) {
             this.showEmptyState(true);
-            this.updateSummary(0, totalCount || 0);
+            this.hideTimeline();
+            this.updateSummary(0, 0, totalCount, page, pageSize);
             this.pageIndicator.textContent = String(this.state.page);
             this.prevBtn.disabled = this.state.page <= 1;
             this.nextBtn.disabled = true;
@@ -395,7 +410,8 @@ const SearchPage = {
         }
 
         this.showEmptyState(false);
-        this.updateSummary(results.length, totalCount);
+        this.renderTimeline(timeline, totalCount);
+        this.updateSummary(results.length, results.length, totalCount, page, pageSize);
         this.pageIndicator.textContent = String(this.state.page);
         this.prevBtn.disabled = this.state.page <= 1;
         this.nextBtn.disabled = this.state.page * this.state.pageSize >= totalCount;
@@ -411,9 +427,13 @@ const SearchPage = {
             const sessionId = result.session_id || '';
             const workspaceId = result.workspace_id || '';
             const workspaceName = result.workspace_name || workspaceId;
+            const workspaceFolder = result.workspace_folder || '';
             const turnNumber = result.turn ?? '';
             const timestamp = result.timestamp_iso ? new Date(result.timestamp_iso).toLocaleString() : 'Unknown time';
             const link = workspaceId && sessionId ? `/workspace/${workspaceId}/session/${sessionId}#turn-${turnNumber}` : '';
+            
+            // Format workspace folder display - show last 2-3 segments for readability
+            const folderDisplay = this.formatFolderPath(workspaceFolder);
 
             return `
                 <div class="dashboard-card">
@@ -428,6 +448,7 @@ const SearchPage = {
                         <div class="text-sm text-white leading-relaxed">${escapedSnippet || '<span class="text-terminal-gray">No text</span>'}</div>
                         <div class="flex flex-wrap gap-4 text-xs text-terminal-gray font-mono">
                             <span>WORKSPACE ${Formatters.escapeHtml(workspaceName)}</span>
+                            ${folderDisplay ? `<span class="flex items-center gap-1" title="${Formatters.escapeHtml(workspaceFolder)}"><span class="opacity-60">📁</span> ${Formatters.escapeHtml(folderDisplay)}</span>` : ''}
                             <span>SESSION ${Formatters.escapeHtml(sessionId.substring(0, 12))}</span>
                             <span>TURN ${turnNumber}</span>
                             <span>${timestamp}</span>
@@ -449,13 +470,15 @@ const SearchPage = {
         `;
     },
 
-    updateSummary(count, total) {
+    updateSummary(pageResultCount, _unused, totalCount, page, pageSize) {
         const disclaimerEl = document.getElementById('results-disclaimer');
-        if (total) {
-            this.summaryEl.textContent = `Showing ${count} of ${total} results`;
+        if (totalCount > 0 && pageResultCount > 0) {
+            const startIdx = (page - 1) * pageSize + 1;
+            const endIdx = startIdx + pageResultCount - 1;
+            this.summaryEl.textContent = `Showing ${startIdx}–${endIdx} of ${totalCount} results`;
             if (disclaimerEl) disclaimerEl.classList.remove('hidden');
-        } else if (count) {
-            this.summaryEl.textContent = `Showing ${count} results`;
+        } else if (totalCount > 0) {
+            this.summaryEl.textContent = `${totalCount} results found`;
             if (disclaimerEl) disclaimerEl.classList.remove('hidden');
         } else {
             this.summaryEl.textContent = 'No results';
@@ -486,6 +509,366 @@ const SearchPage = {
         if (this.state.page <= 1) return;
         this.state.page -= 1;
         await this.fetchResults();
+    },
+    
+    /**
+     * Format workspace folder path for display - shows last meaningful segments
+     */
+    formatFolderPath(folderPath) {
+        if (!folderPath) return '';
+        
+        // Normalize path separators
+        const normalized = folderPath.replace(/\\/g, '/');
+        const segments = normalized.split('/').filter(s => s.length > 0);
+        
+        if (segments.length === 0) return '';
+        if (segments.length <= 2) return segments.join('/');
+        
+        // Show last 2-3 meaningful segments
+        return '…/' + segments.slice(-2).join('/');
+    },
+    
+    /**
+     * Hide the timeline visualization
+     */
+    hideTimeline() {
+        if (this.timelineContainer) {
+            this.timelineContainer.classList.add('hidden');
+        }
+    },
+    
+    /**
+     * Get heatmap color based on intensity (0-1)
+     * Uses a gradient from dark/empty to vibrant cyan/green
+     */
+    getHeatmapColor(intensity) {
+        if (intensity <= 0) return 'rgba(26, 35, 50, 0.6)'; // Empty cell - dark surface
+        
+        // Color gradient: dark blue -> cyan -> green for intensity
+        // Low: #1e3a5f (dark blue), Mid: #0891b2 (cyan), High: #10b981 (emerald)
+        const colors = [
+            { r: 30, g: 58, b: 95 },    // 0.0 - dark blue
+            { r: 8, g: 145, b: 178 },   // 0.5 - cyan
+            { r: 16, g: 185, b: 129 }   // 1.0 - emerald green
+        ];
+        
+        let r, g, b;
+        if (intensity <= 0.5) {
+            const t = intensity * 2;
+            r = Math.round(colors[0].r + (colors[1].r - colors[0].r) * t);
+            g = Math.round(colors[0].g + (colors[1].g - colors[0].g) * t);
+            b = Math.round(colors[0].b + (colors[1].b - colors[0].b) * t);
+        } else {
+            const t = (intensity - 0.5) * 2;
+            r = Math.round(colors[1].r + (colors[2].r - colors[1].r) * t);
+            g = Math.round(colors[1].g + (colors[2].g - colors[1].g) * t);
+            b = Math.round(colors[1].b + (colors[2].b - colors[1].b) * t);
+        }
+        
+        return `rgb(${r}, ${g}, ${b})`;
+    },
+    
+    /**
+     * Render timeline visualization as a canvas-based heatmap strip
+     * Uses pre-aggregated timeline data from the API (covers ALL results)
+     */
+    renderTimeline(timeline, totalCount) {
+        if (!this.timelineContainer || !this.timelineEl) {
+            return;
+        }
+        
+        // Check if we have valid timeline data from API
+        if (!timeline || !timeline.date_counts || Object.keys(timeline.date_counts).length === 0) {
+            this.hideTimeline();
+            return;
+        }
+        
+        const dateCounts = timeline.date_counts;
+        const uniqueSessions = timeline.unique_sessions || 0;
+        const uniqueWorkspaces = timeline.unique_workspaces || 0;
+        
+        const dates = Object.keys(dateCounts).sort();
+        if (dates.length === 0) {
+            this.hideTimeline();
+            return;
+        }
+        
+        // Show timeline
+        this.timelineContainer.classList.remove('hidden');
+        
+        // Update session count info (from ALL results)
+        if (this.timelineSessionsCount) {
+            const sessionText = uniqueSessions === 1 ? '1 session' : `${uniqueSessions} sessions`;
+            const workspaceText = uniqueWorkspaces === 1 ? '1 workspace' : `${uniqueWorkspaces} workspaces`;
+            this.timelineSessionsCount.textContent = `${sessionText} • ${workspaceText}`;
+        }
+        
+        // Generate all dates in range for continuous display
+        const startDate = new Date(dates[0] + 'T00:00:00Z');
+        const endDate = new Date(dates[dates.length - 1] + 'T00:00:00Z');
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
+        const daySpan = Math.round((endDate - startDate) / MS_PER_DAY) + 1;
+        
+        // Build array of all dates in range
+        const allDates = [];
+        for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            allDates.push(d.toISOString().split('T')[0]);
+        }
+        
+        // Find max count for scaling
+        const maxCount = Math.max(...Object.values(dateCounts), 1);
+        
+        // Build x-axis labels (smart date labels based on span)
+        const xLabels = this.buildTimelineXLabels(allDates, daySpan);
+        
+        // Render the canvas-based heatmap
+        const canvasId = 'search-timeline-canvas';
+        this.timelineEl.innerHTML = `
+            <div class="w-full">
+                <div class="flex gap-0 mb-1 text-[9px] text-terminal-gray font-mono" id="timeline-x-labels">
+                    ${xLabels}
+                </div>
+                <div class="relative w-full" style="height: 48px;">
+                    <canvas id="${canvasId}" style="width: 100%; height: 100%; display: block; border-radius: 4px;"></canvas>
+                </div>
+                <div class="flex items-center justify-center gap-2 mt-2">
+                    <span class="text-[10px] text-terminal-gray font-mono">Less</span>
+                    <div class="flex gap-0.5">
+                        ${[0, 0.25, 0.5, 0.75, 1].map(i => `
+                            <div style="width: 14px; height: 10px; background: ${this.getHeatmapColor(i)}; border-radius: 2px;"></div>
+                        `).join('')}
+                    </div>
+                    <span class="text-[10px] text-terminal-gray font-mono">More</span>
+                </div>
+            </div>
+        `;
+        
+        // Render canvas after DOM is ready
+        requestAnimationFrame(() => {
+            this.renderTimelineCanvas(canvasId, allDates, dateCounts, maxCount, daySpan);
+        });
+        
+        // Render date range labels
+        if (this.timelineRange) {
+            const formatDate = (d) => new Date(d + 'T00:00:00Z').toLocaleDateString('en', { 
+                month: 'short', 
+                day: 'numeric',
+                year: daySpan > 180 ? '2-digit' : undefined
+            });
+            
+            if (allDates.length === 1) {
+                this.timelineRange.innerHTML = `<span class="mx-auto">${formatDate(allDates[0])}</span>`;
+            } else {
+                this.timelineRange.innerHTML = `
+                    <span>${formatDate(allDates[0])}</span>
+                    <span class="text-terminal-gray opacity-60">${allDates.length} day${allDates.length !== 1 ? 's' : ''}</span>
+                    <span>${formatDate(allDates[allDates.length - 1])}</span>
+                `;
+            }
+        }
+    },
+    
+    /**
+     * Build smart x-axis labels based on date span
+     */
+    buildTimelineXLabels(allDates, daySpan) {
+        const numCols = allDates.length;
+        if (numCols === 0) return '';
+        
+        // Determine how many labels to show (aim for 5-8 labels)
+        const labelsCount = Math.min(8, Math.max(3, Math.ceil(numCols / 30)));
+        
+        // Calculate which indices get labels
+        const indices = new Set();
+        indices.add(0);
+        indices.add(numCols - 1);
+        
+        if (labelsCount > 2) {
+            const step = (numCols - 1) / (labelsCount - 1);
+            for (let i = 1; i < labelsCount - 1; i++) {
+                indices.add(Math.round(i * step));
+            }
+        }
+        
+        const chosen = Array.from(indices).sort((a, b) => a - b);
+        
+        return allDates.map((dateStr, idx) => {
+            let label = '';
+            if (chosen.includes(idx)) {
+                const d = new Date(dateStr + 'T00:00:00Z');
+                if (daySpan <= 14) {
+                    // Show day + month for short spans
+                    label = d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                } else if (daySpan <= 90) {
+                    // Show month + day for medium spans
+                    const month = d.toLocaleDateString('en', { month: 'short' });
+                    const day = d.getUTCDate();
+                    label = `${month} ${day}`;
+                } else if (daySpan <= 365) {
+                    // Show month + year for longer spans
+                    label = d.toLocaleDateString('en', { month: 'short' }) + " '" + String(d.getUTCFullYear()).slice(-2);
+                } else {
+                    // Show just year for very long spans
+                    label = String(d.getUTCFullYear());
+                }
+            }
+            
+            let alignClass = 'text-center';
+            if (idx === 0) alignClass = 'text-left';
+            else if (idx === numCols - 1) alignClass = 'text-right';
+            
+            return `<div class="flex-1 whitespace-nowrap overflow-visible ${alignClass}" style="min-width: 0;">${label}</div>`;
+        }).join('');
+    },
+    
+    /**
+     * Render the canvas-based timeline heatmap
+     */
+    renderTimelineCanvas(canvasId, allDates, dateCounts, maxCount, daySpan) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const canvasWidth = canvas.clientWidth || canvas.parentElement.clientWidth || 600;
+        const canvasHeight = 48;
+        
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        const ctx = canvas.getContext('2d', { alpha: true });
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        
+        const numCols = allDates.length;
+        const getX = (i) => Math.floor(i * canvasWidth / numCols);
+        
+        // Draw cells
+        for (let c = 0; c < numCols; c++) {
+            const xStart = getX(c);
+            const xEnd = getX(c + 1);
+            const w = Math.max(1, xEnd - xStart);
+            const dateKey = allDates[c];
+            const count = dateCounts[dateKey] || 0;
+            
+            // Check if weekend
+            const d = new Date(dateKey + 'T00:00:00Z');
+            const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+            
+            // Background for weekends
+            if (isWeekend) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.fillRect(xStart, 0, w, canvasHeight);
+            }
+            
+            // Draw value cell
+            if (count > 0) {
+                const intensity = Math.min(1, Math.log(count + 1) / Math.log(maxCount + 1));
+                const color = this.getHeatmapColor(intensity);
+                ctx.fillStyle = color;
+                ctx.fillRect(xStart, 0, w - (w > 2 ? 1 : 0), canvasHeight);
+            } else {
+                // Empty cell - subtle grid line
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.fillRect(xStart, 0, w - (w > 2 ? 1 : 0), canvasHeight);
+            }
+        }
+        
+        // Add tooltip handling
+        this.setupTimelineTooltip(canvas, allDates, dateCounts, numCols, canvasWidth, daySpan);
+    },
+    
+    /**
+     * Setup tooltip for timeline canvas
+     */
+    setupTimelineTooltip(canvas, allDates, dateCounts, numCols, canvasWidth, daySpan) {
+        // Create or get tooltip element
+        let tooltip = document.getElementById('timeline-tooltip');
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'timeline-tooltip';
+            tooltip.className = 'hidden fixed z-[9999] px-2 py-1 bg-surface-dark border border-border-dark text-xs text-white font-mono rounded shadow-lg pointer-events-none';
+            document.body.appendChild(tooltip);
+        }
+        
+        const handleMouseMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            
+            const colIdx = Math.floor(mx / canvasWidth * numCols);
+            
+            if (colIdx >= 0 && colIdx < numCols) {
+                const dateKey = allDates[colIdx];
+                const count = dateCounts[dateKey] || 0;
+                
+                const d = new Date(dateKey + 'T00:00:00Z');
+                const dateLabel = d.toLocaleDateString('en', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    year: daySpan > 365 ? 'numeric' : undefined
+                });
+                
+                tooltip.textContent = count > 0 
+                    ? `${dateLabel}: ${count} result${count !== 1 ? 's' : ''}`
+                    : `${dateLabel}: No results`;
+                
+                // Position tooltip
+                let topPos = e.clientY - 30;
+                let leftPos = e.clientX + 10;
+                
+                if (leftPos + 150 > window.innerWidth) leftPos = e.clientX - 150;
+                if (topPos < 0) topPos = e.clientY + 20;
+                
+                tooltip.style.top = topPos + 'px';
+                tooltip.style.left = leftPos + 'px';
+                tooltip.classList.remove('hidden');
+            } else {
+                tooltip.classList.add('hidden');
+            }
+        };
+        
+        const handleMouseLeave = () => {
+            tooltip.classList.add('hidden');
+        };
+        
+        // Remove old listeners by cloning
+        const newCanvas = canvas.cloneNode(true);
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+        
+        newCanvas.addEventListener('mousemove', handleMouseMove);
+        newCanvas.addEventListener('mouseleave', handleMouseLeave);
+        
+        // Redraw after clone
+        const canvasHeight = 48;
+        const ctx = newCanvas.getContext('2d', { alpha: true });
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        
+        const getX = (i) => Math.floor(i * canvasWidth / numCols);
+        
+        for (let c = 0; c < numCols; c++) {
+            const xStart = getX(c);
+            const xEnd = getX(c + 1);
+            const w = Math.max(1, xEnd - xStart);
+            const dateKey = allDates[c];
+            const count = dateCounts[dateKey] || 0;
+            
+            const d = new Date(dateKey + 'T00:00:00Z');
+            const isWeekend = d.getUTCDay() === 0 || d.getUTCDay() === 6;
+            
+            if (isWeekend) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+                ctx.fillRect(xStart, 0, w, canvasHeight);
+            }
+            
+            if (count > 0) {
+                const maxCount = Math.max(...Object.values(dateCounts), 1);
+                const intensity = Math.min(1, Math.log(count + 1) / Math.log(maxCount + 1));
+                const color = this.getHeatmapColor(intensity);
+                ctx.fillStyle = color;
+                ctx.fillRect(xStart, 0, w - (w > 2 ? 1 : 0), canvasHeight);
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.fillRect(xStart, 0, w - (w > 2 ? 1 : 0), canvasHeight);
+            }
+        }
     }
 };
 

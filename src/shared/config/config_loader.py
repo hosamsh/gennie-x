@@ -87,7 +87,6 @@ class Config:
         return yaml.safe_load(config_str)
     
     @property
-    @property
     def web(self) -> WebConfig:
         """Get web application configuration."""
         if self._web is None:

@@ -17,8 +17,8 @@ from src.__version__ import __version__
 def main():
     # Load config to get default port
     try:
-        from src.shared.config.config_loader import GlobalConfig
-        config = GlobalConfig()
+        from src.shared.config.config_loader import get_config
+        config = get_config()
         default_port = config.web.port
     except Exception:
         default_port = 8000

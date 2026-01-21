@@ -289,6 +289,97 @@ def _rrf_merge(
     return merged_results
 
 
+def _build_timeline_aggregation(results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Build timeline aggregation from results for visualization.
+    
+    Args:
+        results: List of search result dicts with timestamp_iso, session_id, workspace_name
+        
+    Returns:
+        Dict with date_counts (date -> count), unique_sessions, unique_workspaces
+    """
+    from collections import defaultdict
+    
+    date_counts: Dict[str, int] = defaultdict(int)
+    sessions: set = set()
+    workspaces: set = set()
+    
+    for r in results:
+        ts = r.get("timestamp_iso")
+        if ts:
+            try:
+                # Extract date part (YYYY-MM-DD)
+                date_key = ts[:10] if len(ts) >= 10 else None
+                if date_key and date_key[4] == '-':
+                    date_counts[date_key] += 1
+            except (TypeError, IndexError):
+                pass
+        
+        session_id = r.get("session_id")
+        if session_id:
+            sessions.add(session_id)
+        
+        workspace = r.get("workspace_name") or r.get("workspace_id")
+        if workspace:
+            workspaces.add(workspace)
+    
+    return {
+        "date_counts": dict(date_counts),
+        "unique_sessions": len(sessions),
+        "unique_workspaces": len(workspaces),
+    }
+
+
+def _keyword_timeline_aggregation(
+    conn: sqlite3.Connection,
+    query: str,
+    roles: Optional[List[str]],
+) -> Dict[str, Any]:
+    """Get timeline aggregation for all keyword search results."""
+    from collections import defaultdict
+    
+    role_sql, role_params = _build_role_filter(roles)
+    
+    # nosec B608 - role_sql contains only parameterized IN clause
+    sql = f"""
+        SELECT DATE(t.timestamp_iso) as date, 
+               t.session_id, 
+               COALESCE(t.workspace_name, t.workspace_id) as workspace
+        FROM turns_fts
+        JOIN turns t ON turns_fts.rowid = t.id
+        WHERE turns_fts MATCH ?{role_sql}
+    """
+    params = [query] + role_params
+    
+    try:
+        cursor = conn.execute(sql, params)
+    except sqlite3.OperationalError:
+        safe_query = _escape_fts_query(query)
+        params = [safe_query] + role_params
+        try:
+            cursor = conn.execute(sql, params)
+        except sqlite3.OperationalError:
+            return {"date_counts": {}, "unique_sessions": 0, "unique_workspaces": 0}
+    
+    date_counts: Dict[str, int] = defaultdict(int)
+    sessions: set = set()
+    workspaces: set = set()
+    
+    for row in cursor:
+        if row[0]:
+            date_counts[row[0]] += 1
+        if row[1]:
+            sessions.add(row[1])
+        if row[2]:
+            workspaces.add(row[2])
+    
+    return {
+        "date_counts": dict(date_counts),
+        "unique_sessions": len(sessions),
+        "unique_workspaces": len(workspaces),
+    }
+
+
 def search_turns(
     conn: sqlite3.Connection,
     query: str,
@@ -334,6 +425,7 @@ def search_turns(
 
     if mode == "keyword":
         results, total_count = _keyword_search_page(conn, query, roles, page_size, offset)
+        timeline = _keyword_timeline_aggregation(conn, query, roles)
         return {
             "query": query,
             "mode": mode,
@@ -341,6 +433,7 @@ def search_turns(
             "page_size": page_size,
             "total_count": total_count,
             "results": results,
+            "timeline": timeline,
         }
 
     if mode == "semantic":
@@ -352,6 +445,7 @@ def search_turns(
             float(min_score_value),
         )
         total_count = len(semantic_results)
+        timeline = _build_timeline_aggregation(semantic_results)
         paged = semantic_results[offset:offset + page_size]
         for result in paged:
             result["score"] = result.get("score_semantic", 0.0)
@@ -362,6 +456,7 @@ def search_turns(
             "page_size": page_size,
             "total_count": total_count,
             "results": paged,
+            "timeline": timeline,
         }
 
     if mode != "hybrid":
@@ -380,6 +475,7 @@ def search_turns(
     keyword_ids = {r["turn_id"] for r in keyword_results}
     semantic_ids = {r["turn_id"] for r in semantic_results}
     total_count = len(keyword_ids | semantic_ids)
+    timeline = _build_timeline_aggregation(merged)
 
     paged = merged[offset:offset + page_size]
     return {
@@ -389,4 +485,5 @@ def search_turns(
         "page_size": page_size,
         "total_count": total_count,
         "results": paged,
+        "timeline": timeline,
     }

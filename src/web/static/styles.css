@@ -1130,6 +1130,17 @@ body.resizing-sidebar .nav-sidebar {
     color: #fbbf24;
 }
 
+/* Search Timeline Visualization */
+#search-timeline {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+#search-timeline canvas {
+    cursor: crosshair;
+}
+
 /* Dashboard tabs */
 .dashboard-tab {
     transition: all 0.2s;
