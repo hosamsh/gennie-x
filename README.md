@@ -54,6 +54,15 @@
 
 ### Basic Usage
 
+#### 0) Create the Config File (Required)
+
+Create the config file by copying or renaming the example config. The defaults work for most setups:
+
+```bash
+cp config/config.example.yaml config/config.yaml
+```
+
+
 #### 1) Quick Start Using the Web Interface
 
 Launch the web dashboard to explore your conversations visually:
@@ -64,6 +73,8 @@ uv run python run_web.py
 ```
 
 The web interface lets you browse workspaces, extract chat sessions, view analytics, and explore conversations interactively without needing to use the CLI.
+
+If the web UI shows no workspaces, it usually means the app is pointing at the wrong storage location or there is no local agent data yet. Check the storage paths in `config/config.yaml` (section `extract.<agent>.workspace_storage`). If you have not used the agent locally, open any workspace in the agent and start a chat once so it writes local storage, then refresh.
 
 #### 2) Using the CLI
 
@@ -93,6 +104,8 @@ uv run python run_cli.py --extract <workspace-id> --run-dir data/<dir-name>
 # Search through extracted conversations
 uv run python run_cli.py --search "your search query" --run-dir data/<dir-name>
 ```
+
+If `--list` shows 0 workspaces, it usually means the app is pointing at the wrong storage location or there is no local agent data yet. Check the storage paths in `config/config.yaml` (see section `extract.<agent>.workspace_storage` in the config). If you have not used the agent locally, open any workspace in the agent and start a chat once so it writes local storage, then re-run `--list`.
 
 ## 📝 Configuration
 
