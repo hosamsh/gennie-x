@@ -52,6 +52,16 @@
    uv sync
    ```
 
+### Understanding Workspaces
+
+**Important:** Gennie-X does **not** create workspaces. Instead, it *discovers* existing workspaces from your AI coding agents (VS Code/Cursor/Claude Code). The tool reads the local storage where these agents save their conversation history.
+
+To have workspaces available:
+1. Use one of the supported agents (GitHub Copilot in VS Code, Cursor, or Claude Code)
+2. Open a project/folder in the agent
+3. Start at least one chat conversation with the AI assistant
+4. The agent will save this data to its local storage (auto-detected by Gennie-X)
+
 ### Basic Usage
 
 #### 0) Create the Config File (Required)
